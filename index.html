@@ -1,0 +1,3939 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dashboard - Sistema de Ferramentas</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+    <!-- Incluir Supabase JS -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <!-- Biblioteca de compressão LZ-String -->
+    <script src="https://cdn.jsdelivr.net/npm/lz-string@1.4.4/libs/lz-string.min.js"></script>
+    <style>
+        :root {
+            --primary-color: #2c3e50;
+            --secondary-color: #3498db;
+            --accent-color: #2980b9;
+            --light-color: #ecf0f1;
+            --success-color: #27ae60;
+            --warning-color: #f39c12;
+            --danger-color: #e74c3c;
+            --gray-color: #95a5a6;
+            --text-color: #2c3e50;
+            --border-color: #bdc3c7;
+        }
+        
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+        
+        body {
+            background-color: #f5f7fa;
+            color: var(--text-color);
+            line-height: 1.6;
+        }
+        
+        .dashboard-container {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        
+        .dashboard-header {
+            background: linear-gradient(135deg, var(--primary-color), var(--accent-color));
+            border-radius: 12px;
+            padding: 2px;
+            margin-bottom: 5px;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
+            display: flex;
+            flex-direction: column;
+            color: white;
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .dashboard-header::before {
+            content: '';
+            position: absolute;
+            top: -50%;
+            right: -50%;
+            width: 100%;
+            height: 200%;
+            background: rgba(255, 255, 255, 0.1);
+            transform: rotate(25deg);
+        }
+        
+        .header-top {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            width: 100%;
+            position: relative;
+            z-index: 1;
+            margin-bottom: 2px;
+        }
+        
+        .logo-fw {
+            width: 140px;
+            flex-shrink: 0;
+            margin-left: 25px;
+            position: relative;
+            top: 42px; /* Move apenas o logo para baixo dentro do seu espaço */
+        }
+        
+        .logo-fw img {
+            width: 100%;
+            height: auto;
+            margin-left: 20px; /* Move para direita */
+            margin-top: 10px; /* Move para baixo */
+            max-height: 650px;
+            object-fit: contain;
+        }
+        
+        .header-center {
+            text-align: center;
+            flex-grow: 1;
+            padding: 0 20px;
+        }
+        
+        .project-title {
+            font-size: 40px;
+            font-weight: 700;
+            position: relative;
+            left: 70px;
+            z-index: 1;
+            margin-bottom: 5px;
+        }
+        
+        .project-subtitle {
+            font-size: 16px;
+            opacity: 0.9;
+            position: relative;
+            z-index: 1;
+        }
+        
+        .header-right {
+            display: flex;
+            gap: 30px;
+            flex-shrink: 0;
+        }
+        
+        .logo-right {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        
+        .logo-right img {
+            width: 100%;
+            height: auto;
+            max-height: 60px;
+            object-fit: contain;
+        }
+        
+        .logo-delservin {
+            width: 130px;
+            position: relative;
+            top: 38px; /* Move para baixo */
+            flex-shrink: 0;
+        }
+        
+        .logo-altercon {
+            width: 100px;
+            position: relative;
+            top: 38px; /* Move para baixo */
+            margin-right: 30px; /* Move para esquerdaa */
+            flex-shrink: 0;
+        }
+        
+        .project-info {
+            display: flex;
+            gap: 20px;
+            position: relative;
+            z-index: 1;
+            align-items: center;
+            justify-content: center;
+            margin-top: 8px;
+            flex-wrap: wrap;
+        }
+        
+        .info-item {
+            text-align: center;
+            min-width: 100px;
+        }
+        
+        .info-label {
+            font-size: 14px;
+            opacity: 0.9;
+            margin-bottom: 8px;
+        }
+        
+        .info-value {
+            font-size: 20px;
+            font-weight: 700;
+        }
+        
+        .tabs-container {
+            background-color: white;
+            border-radius: 12px;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
+            margin-bottom: 25px;
+            overflow: hidden;
+        }
+        
+        .tabs-header {
+            display: flex;
+            background-color: var(--light-color);
+            border-bottom: 1px solid var(--border-color);
+            padding: 0 20px;
+            flex-wrap: wrap;
+        }
+        
+        .tab-button {
+            padding: 18px 25px;
+            background: none;
+            border: none;
+            cursor: pointer;
+            font-size: 15px;
+            font-weight: 500;
+            color: var(--text-color);
+            transition: all 0.3s ease;
+            position: relative;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        
+        .tab-button:hover {
+            background-color: rgba(255, 255, 255, 0.5);
+        }
+        
+        .tab-button.active {
+            background-color: white;
+            color: var(--secondary-color);
+        }
+        
+        .tab-button.active::after {
+            content: '';
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            width: 100%;
+            height: 3px;
+            background-color: var(--secondary-color);
+        }
+        
+        .tab-content {
+            display: none;
+            padding: 30px;
+            animation: fadeIn 0.5s ease;
+        }
+        
+        .tab-content.active {
+            display: block;
+        }
+        
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        
+        .section-title {
+            font-size: 22px;
+            margin-bottom: 25px;
+            color: var(--primary-color);
+            border-bottom: 1px solid var(--border-color);
+            padding-bottom: 12px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        
+        .section-title i {
+            color: var(--secondary-color);
+        }
+        
+        .cards-container {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+            gap: 20px;
+            margin-bottom: 35px;
+        }
+        
+        .card {
+            background-color: white;
+            border-radius: 10px;
+            padding: 25px;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.05);
+            transition: transform 0.3s ease, box-shadow 0.3s ease;
+            border-left: 4px solid var(--secondary-color);
+        }
+        
+        .card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 8px 25px rgba(0, 0, 0, 0.1);
+        }
+        
+        .card-title {
+            font-size: 18px;
+            font-weight: 600;
+            margin-bottom: 20px;
+            color: var(--primary-color);
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        
+        .card-title i {
+            color: var(--secondary-color);
+        }
+        
+        .progress-container {
+            margin-bottom: 18px;
+        }
+        
+        .progress-label {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 8px;
+            font-size: 14px;
+        }
+        
+        .progress-bar {
+            height: 10px;
+            background-color: var(--light-color);
+            border-radius: 5px;
+            overflow: hidden;
+        }
+        
+        .progress-fill {
+            height: 100%;
+            border-radius: 5px;
+            transition: width 0.8s ease;
+        }
+        
+        .progress-fill.planned {
+            background-color: var(--secondary-color);
+        }
+        
+        .progress-fill.actual {
+            background-color: var(--success-color);
+        }
+        
+        .chart-container {
+            background-color: white;
+            border-radius: 10px;
+            padding: 25px;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.05);
+            margin-bottom: 25px;
+            height: 450px;
+        }
+        
+        .chart-title {
+            font-size: 18px;
+            font-weight: 600;
+            margin-bottom: 20px;
+            color: var(--primary-color);
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        
+        .chart-title i {
+            color: var(--secondary-color);
+        }
+        
+        .status-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            padding: 6px 14px;
+            border-radius: 20px;
+            font-size: 13px;
+            font-weight: 500;
+        }
+        
+        .status-completed {
+            background-color: rgba(39, 174, 96, 0.1);
+            color: var(--success-color);
+        }
+        
+        .status-ontrack {
+            background-color: rgba(52, 152, 219, 0.1);
+            color: var(--secondary-color);
+        }
+        
+        .status-delayed {
+            background-color: rgba(231, 76, 60, 0.1);
+            color: var(--danger-color);
+        }
+        
+        /* Formulário de cadastro */
+        .form-container {
+            background-color: white;
+            border-radius: 10px;
+            padding: 25px;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.05);
+            margin-bottom: 25px;
+        }
+        
+        .form-group {
+            margin-bottom: 20px;
+        }
+        
+        .form-row {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 20px;
+        }
+        
+        label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: 500;
+            color: var(--primary-color);
+        }
+        
+        label.required::after {
+            content: " *";
+            color: var(--danger-color);
+        }
+        
+        input, select, textarea {
+            width: 100%;
+            padding: 12px 15px;
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            font-size: 15px;
+            transition: border 0.3s ease;
+        }
+        
+        input:focus, select:focus, textarea:focus {
+            outline: none;
+            border-color: var(--secondary-color);
+        }
+        
+        input.error, select.error, textarea.error {
+            border-color: var(--danger-color);
+            background-color: rgba(231, 76, 60, 0.05);
+        }
+        
+        .error-message {
+            color: var(--danger-color);
+            font-size: 13px;
+            margin-top: 5px;
+            display: none;
+        }
+        
+        .btn {
+            padding: 12px 25px;
+            border: none;
+            border-radius: 8px;
+            font-size: 15px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+        }
+        
+        .btn-primary {
+            background-color: var(--secondary-color);
+            color: white;
+        }
+        
+        .btn-primary:hover {
+            background-color: var(--accent-color);
+        }
+        
+        .btn-success {
+            background-color: var(--success-color);
+            color: white;
+        }
+        
+        .btn-success:hover {
+            background-color: #219653;
+        }
+        
+        .btn-warning {
+            background-color: var(--warning-color);
+            color: white;
+        }
+        
+        .btn-warning:hover {
+            background-color: #e67e22;
+        }
+        
+        .btn-danger {
+            background-color: var(--danger-color);
+            color: white;
+        }
+        
+        .btn-danger:hover {
+            background-color: #c0392b;
+        }
+        
+        .btn-group {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+        }
+        
+        /* Área de captura de imagem */
+        .image-capture-container {
+            background-color: white;
+            border-radius: 10px;
+            padding: 25px;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.05);
+            margin-bottom: 25px;
+        }
+        
+        .camera-area {
+            width: 100%;
+            height: 300px;
+            background-color: var(--light-color);
+            border-radius: 8px;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            margin-bottom: 20px;
+            overflow: hidden;
+            position: relative;
+        }
+        
+        .camera-area img {
+            max-width: 100%;
+            max-height: 100%;
+            object-fit: contain;
+        }
+        
+        .camera-placeholder {
+            text-align: center;
+            color: var(--gray-color);
+        }
+        
+        .camera-placeholder i {
+            font-size: 60px;
+            margin-bottom: 15px;
+        }
+        
+        .camera-controls {
+            display: flex;
+            gap: 10px;
+            justify-content: center;
+            margin-top: 20px;
+        }
+        
+        /* Lista de ferramentas */
+        .tools-list {
+            background-color: white;
+            border-radius: 10px;
+            overflow: hidden;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.05);
+            margin-bottom: 25px;
+        }
+        
+        .table-container {
+            overflow-x: auto;
+        }
+        
+        table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+        
+        th {
+            background-color: var(--light-color);
+            padding: 18px 15px;
+            text-align: left;
+            font-weight: 600;
+            color: var(--primary-color);
+            border-bottom: 1px solid var(--border-color);
+        }
+        
+        td {
+            padding: 15px;
+            border-bottom: 1px solid var(--border-color);
+            vertical-align: middle;
+        }
+        
+        tr:last-child td {
+            border-bottom: none;
+        }
+        
+        tr:hover {
+            background-color: rgba(236, 240, 241, 0.5);
+        }
+        
+        .tool-image {
+            width: 60px;
+            height: 60px;
+            object-fit: cover;
+            border-radius: 6px;
+        }
+        
+        .action-buttons {
+            display: flex;
+            gap: 8px;
+        }
+        
+        .action-btn {
+            padding: 6px 10px;
+            border: none;
+            border-radius: 6px;
+            background-color: transparent;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            font-size: 14px;
+        }
+        
+        .action-btn-view {
+            color: var(--secondary-color);
+        }
+        
+        .action-btn-edit {
+            color: var(--warning-color);
+        }
+        
+        .action-btn-delete {
+            color: var(--danger-color);
+        }
+        
+        .action-btn:hover {
+            background-color: rgba(0, 0, 0, 0.05);
+        }
+        
+        /* Modal */
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.7);
+            z-index: 1000;
+            justify-content: center;
+            align-items: center;
+        }
+        
+        .modal-content {
+            background-color: white;
+            border-radius: 12px;
+            width: 90%;
+            max-width: 800px;
+            max-height: 90vh;
+            overflow-y: auto;
+            animation: modalFadeIn 0.3s ease;
+        }
+        
+        .modal-header {
+            padding: 20px 25px;
+            border-bottom: 1px solid var(--border-color);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        
+        .modal-title {
+            font-size: 20px;
+            color: var(--primary-color);
+        }
+        
+        .modal-close {
+            background: none;
+            border: none;
+            font-size: 20px;
+            cursor: pointer;
+            color: var(--gray-color);
+        }
+        
+        .modal-body {
+            padding: 25px;
+        }
+        
+        @keyframes modalFadeIn {
+            from { opacity: 0; transform: translateY(-20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        
+        /* Configuração do banco de dados */
+        .config-container {
+            background-color: white;
+            border-radius: 10px;
+            padding: 25px;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.05);
+            margin-bottom: 25px;
+        }
+        
+        .config-step {
+            margin-bottom: 30px;
+            padding-bottom: 20px;
+            border-bottom: 1px solid var(--border-color);
+        }
+        
+        .config-step:last-child {
+            border-bottom: none;
+            margin-bottom: 0;
+            padding-bottom: 0;
+        }
+        
+        .step-title {
+            font-size: 18px;
+            font-weight: 600;
+            margin-bottom: 15px;
+            color: var(--primary-color);
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        
+        .step-title i {
+            color: var(--secondary-color);
+        }
+        
+        .step-content {
+            margin-left: 35px;
+        }
+        
+        .code-block {
+            background-color: #2c3e50;
+            color: #ecf0f1;
+            padding: 15px;
+            border-radius: 8px;
+            font-family: 'Courier New', monospace;
+            margin: 15px 0;
+            overflow-x: auto;
+            font-size: 14px;
+        }
+        
+        .storage-status {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-bottom: 15px;
+        }
+        
+        .status-indicator {
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            background-color: var(--gray-color);
+        }
+        
+        .status-indicator.online {
+            background-color: var(--success-color);
+            animation: pulse 2s infinite;
+        }
+        
+        @keyframes pulse {
+            0% { opacity: 1; }
+            50% { opacity: 0.5; }
+            100% { opacity: 1; }
+        }
+        
+        /* Responsividade */
+        @media (max-width: 992px) {
+            .header-top {
+                flex-direction: column;
+                gap: 15px;
+                text-align: center;
+            }
+            
+            .logo-fw, .header-right {
+                width: 100%;
+                justify-content: center;
+            }
+            
+            .header-center {
+                padding: 0;
+            }
+            
+            .project-info {
+                gap: 15px;
+            }
+            
+            .info-item {
+                min-width: 80px;
+            }
+        }
+        
+        @media (max-width: 768px) {
+            .tabs-header {
+                justify-content: center;
+            }
+            
+            .form-row {
+                grid-template-columns: 1fr;
+            }
+            
+            .btn-group {
+                justify-content: center;
+            }
+            
+            .step-content {
+                margin-left: 0;
+            }
+            
+            .header-right {
+                gap: 15px;
+            }
+            
+            .logo-delservin {
+                width: 100px;
+            }
+            
+            .logo-altercon {
+                width: 80px;
+            }
+        }
+        
+        @media (max-width: 480px) {
+            .dashboard-container {
+                padding: 10px;
+            }
+            
+            .tab-content {
+                padding: 15px;
+            }
+            
+            .section-title {
+                font-size: 18px;
+            }
+            
+            .card {
+                padding: 15px;
+            }
+            
+            .btn {
+                padding: 10px 15px;
+                font-size: 14px;
+            }
+            
+            .camera-controls {
+                flex-wrap: wrap;
+            }
+        }
+        
+        /* Notificações */
+        .notification {
+            position: fixed;
+            top: 150px;
+            right: 20px;
+            padding: 10px 25px;
+            border-radius: 8px;
+            color: white;
+            font-weight: 500;
+            z-index: 1100;
+            animation: slideIn 0.3s ease;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            max-width: 400px;
+        }
+        
+        .notification-success {
+            background-color: var(--success-color);
+        }
+        
+        .notification-error {
+            background-color: var(--danger-color);
+        }
+        
+        .notification-warning {
+            background-color: var(--warning-color);
+        }
+        
+        @keyframes slideIn {
+            from { transform: translateX(100%); opacity: 0; }
+            to { transform: translateX(0); opacity: 1; }
+        }
+        
+        /* Loader */
+        .loader {
+            display: none;
+            width: 50px;
+            height: 50px;
+            border: 5px solid #f3f3f3;
+            border-top: 5px solid var(--secondary-color);
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin: 20px auto;
+        }
+        
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        
+        /* Info de armazenamento */
+        .storage-info {
+            background-color: #f8f9fa;
+            border-radius: 8px;
+            padding: 15px;
+            margin-top: 10px;
+            border-left: 4px solid var(--secondary-color);
+        }
+        
+        .storage-info p {
+            margin: 5px 0;
+            font-size: 14px;
+        }
+        
+        .storage-info .storage-type {
+            display: inline-block;
+            padding: 3px 8px;
+            background-color: var(--light-color);
+            border-radius: 4px;
+            font-size: 12px;
+            margin-left: 5px;
+        }
+        
+        .export-history {
+            max-height: 300px;
+            overflow-y: auto;
+        }
+        
+        /* Backup Button */
+        .backup-btn {
+            background-color: #8e44ad;
+            color: white;
+        }
+        
+        .backup-btn:hover {
+            background-color: #7d3c98;
+        }
+        
+        /* Search Box */
+        .search-box {
+            position: relative;
+            margin-bottom: 20px;
+        }
+        
+        .search-box input {
+            padding-left: 40px;
+        }
+        
+        .search-box i {
+            position: absolute;
+            left: 15px;
+            top: 50%;
+            transform: translateY(-50%);
+            color: var(--gray-color);
+        }
+        
+        /* Tool Status Colors */
+        .status-available { color: var(--success-color); }
+        .status-inuse { color: var(--secondary-color); }
+        .status-maintenance { color: var(--warning-color); }
+        .status-damaged { color: var(--danger-color); }
+    </style>
+</head>
+<body>
+    <div class="dashboard-container">
+        <header class="dashboard-header">
+            <div class="header-top">
+                <div class="logo-fw">
+                    <img src="FW Logo.png" alt="FW Logo">
+                </div>
+                
+                <div class="header-center">
+                    <h1 class="project-title">Sistema de Controle de Ferramentas</h1>                    
+                </div>
+                
+                <div class="header-right">
+                    <div class="logo-right logo-delservin">
+                        <img src="Delservin Logo.png" alt="Delservin Logo">
+                    </div>
+                    <div class="logo-right logo-altercon">
+                        <img src="Altercon Logo.png" alt="Altercon Logo">
+                    </div>
+                </div>
+            </div>
+            
+            <div class="project-info">
+                <div class="info-item">
+                    <div class="info-label">Ferramentas</div>
+                    <div class="info-value" id="totalTools">0</div>
+                </div>
+                <div class="info-item">
+                    <div class="info-label">Status</div>
+                    <div class="info-value">
+                        <span class="status-badge status-ontrack" id="storageStatus">Local</span>
+                    </div>
+                </div>
+                <div class="info-item">
+                    <div class="info-label">Armazenamento</div>
+                    <div class="info-value" id="storageType">IndexedDB</div>
+                </div>
+                <div class="info-item">
+                    <div class="info-label">Última Atualização</div>
+                    <div class="info-value" id="lastUpdate">Hoje</div>
+                </div>
+            </div>
+        </header>
+        
+        <div class="tabs-container">
+            <div class="tabs-header">
+                <button class="tab-button active" data-tab="dashboard">
+                    <i class="fas fa-tachometer-alt"></i> Dashboard
+                </button>
+                <button class="tab-button" data-tab="cadastro">
+                    <i class="fas fa-tools"></i> Cadastrar Ferramenta
+                </button>
+                <button class="tab-button" data-tab="catalogo">
+                    <i class="fas fa-list"></i> Catálogo de Ferramentas
+                </button>
+                <button class="tab-button" data-tab="exportar">
+                    <i class="fas fa-file-excel"></i> Exportar para Excel
+                </button>
+                <button class="tab-button" data-tab="database">
+                    <i class="fas fa-database"></i> Banco de Dados Online
+                </button>
+            </div>
+            
+            <!-- Dashboard Tab -->
+            <div id="dashboard" class="tab-content active">
+                <h2 class="section-title"><i class="fas fa-chart-line"></i> Estatísticas do Sistema</h2>
+                
+                <div class="cards-container">
+                    <div class="card">
+                        <h3 class="card-title"><i class="fas fa-tools"></i> Ferramentas por Status</h3>
+                        <div class="progress-container">
+                            <div class="progress-label">
+                                <span>Disponíveis</span>
+                                <span id="availablePercent">0%</span>
+                            </div>
+                            <div class="progress-bar">
+                                <div class="progress-fill actual" id="availableBar" style="width: 0%"></div>
+                            </div>
+                        </div>
+                        <div class="progress-container">
+                            <div class="progress-label">
+                                <span>Em Uso</span>
+                                <span id="inUsePercent">0%</span>
+                            </div>
+                            <div class="progress-bar">
+                                <div class="progress-fill planned" id="inUseBar" style="width: 0%"></div>
+                            </div>
+                        </div>
+                        <div class="progress-container">
+                            <div class="progress-label">
+                                <span>Manutenção</span>
+                                <span id="maintenancePercent">0%</span>
+                            </div>
+                            <div class="progress-bar">
+                                <div class="progress-fill" id="maintenanceBar" style="width: 0%; background-color: var(--warning-color)"></div>
+                            </div>
+                        </div>
+                        <div class="progress-container">
+                            <div class="progress-label">
+                                <span>Danificadas</span>
+                                <span id="damagedPercent">0%</span>
+                            </div>
+                            <div class="progress-bar">
+                                <div class="progress-fill" id="damagedBar" style="width: 0%; background-color: var(--danger-color)"></div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="card">
+                        <h3 class="card-title"><i class="fas fa-tags"></i> Ferramentas por Categoria</h3>
+                        <div id="categoryStats">
+                            <p style="text-align: center; color: var(--gray-color); padding: 20px 0;">Carregando dados...</p>
+                        </div>
+                    </div>
+                    
+                    <div class="card">
+                        <h3 class="card-title"><i class="fas fa-calendar-alt"></i> Atividades Recentes</h3>
+                        <div id="recentActivities">
+                            <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 15px;">
+                                <div style="width: 10px; height: 10px; border-radius: 50%; background-color: var(--success-color);"></div>
+                                <div>
+                                    <p style="font-weight: 500;">Sistema iniciado</p>
+                                    <p style="font-size: 12px; color: var(--gray-color);">Hoje, 10:30</p>
+                                </div>
+                            </div>
+                            <div id="activitiesList">
+                                <p style="text-align: center; color: var(--gray-color);">Nenhuma atividade registrada</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="chart-container">
+                    <h3 class="chart-title"><i class="fas fa-chart-bar"></i> Distribuição de Ferramentas por Localização</h3>
+                    <canvas id="locationChart"></canvas>
+                </div>
+                
+                <div class="card">
+                    <h3 class="card-title"><i class="fas fa-download"></i> Backup Rápido</h3>
+                    <p style="margin-bottom: 15px;">Faça um backup completo dos seus dados localmente.</p>
+                    <div class="btn-group">
+                        <button type="button" class="btn backup-btn" id="backupBtn">
+                            <i class="fas fa-download"></i> Fazer Backup
+                        </button>
+                        <button type="button" class="btn btn-warning" id="restoreBtn">
+                            <i class="fas fa-upload"></i> Restaurar Backup
+                        </button>
+                    </div>
+                    <input type="file" id="restoreFileInput" accept=".json" style="display: none;">
+                </div>
+            </div>
+            
+            <!-- Cadastro Tab -->
+            <div id="cadastro" class="tab-content">
+                <h2 class="section-title"><i class="fas fa-tools"></i> Cadastrar Nova Ferramenta</h2>
+                
+                <div class="form-container">
+                    <form id="toolForm">
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label for="toolName" class="required">Nome da Ferramenta</label>
+                                <input type="text" id="toolName" required maxlength="100">
+                                <div class="error-message" id="toolNameError">O nome da ferramenta é obrigatório</div>
+                            </div>
+                            <div class="form-group">
+                                <label for="toolCode" class="required">Código/Número de Série</label>
+                                <input type="text" id="toolCode" required maxlength="50">
+                                <div class="error-message" id="toolCodeError">O código/número de série é obrigatório</div>
+                            </div>
+                        </div>
+                        
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label for="toolCategory" class="required">Categoria</label>
+                                <select id="toolCategory" required>
+                                    <option value="">Selecione uma categoria</option>
+                                    <option value="Elétrica">Elétrica</option>
+                                    <option value="Mecânica">Mecânica</option>
+                                    <option value="Hidráulica">Hidráulica</option>
+                                    <option value="Pneumática">Pneumática</option>
+                                    <option value="Medição">Medição</option>
+                                    <option value="Jardim">Jardim</option>
+                                    <option value="Outros">Outros</option>
+                                </select>
+                                <div class="error-message" id="toolCategoryError">Selecione uma categoria</div>
+                            </div>
+                            <div class="form-group">
+                                <label for="toolStatus" class="required">Status</label>
+                                <select id="toolStatus" required>
+                                    <option value="Disponível">Disponível</option>
+                                    <option value="Em Uso">Em Uso</option>
+                                    <option value="Manutenção">Em Manutenção</option>
+                                    <option value="Danificado">Danificado</option>
+                                </select>
+                                <div class="error-message" id="toolStatusError">Selecione um status</div>
+                            </div>
+                        </div>
+                        
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label for="toolLocation" class="required">Localização</label>
+                                <select id="toolLocation" required>
+                                    <option value="">Selecione uma localização</option>
+                                    <option value="Container Elétrica">Container Elétrica</option>
+                                    <option value="Container Mecânica">Container Mecânica</option>
+                                    <option value="Oficina">Oficina</option>
+                                    <option value="Campo">Campo</option>
+                                    <option value="Caminhão">Caminhão</option>
+                                    <option value="Kombi">Kombi</option>
+                                    <option value="Escritório">Escritório</option>
+                                </select>
+                                <div class="error-message" id="toolLocationError">Selecione uma localização</div>
+                            </div>
+                            <div class="form-group">
+                                <label for="toolCondition" class="required">Condição</label>
+                                <select id="toolCondition" required>
+                                    <option value="Nova">Nova</option>
+                                    <option value="Boa">Boa</option>
+                                    <option value="Regular">Regular</option>
+                                    <option value="Precisa de Reparo">Precisa de Reparo</option>
+                                </select>
+                                <div class="error-message" id="toolConditionError">Selecione uma condição</div>
+                            </div>
+                        </div>
+                        
+                        <div class="form-group">
+                            <label for="toolDescription">Descrição</label>
+                            <textarea id="toolDescription" rows="3" maxlength="500"></textarea>
+                        </div>
+                        
+                        <div class="form-group">
+                            <label for="toolObservations">Observações</label>
+                            <textarea id="toolObservations" rows="2" maxlength="300"></textarea>
+                        </div>
+                    </form>
+                </div>
+                
+                <div class="image-capture-container">
+                    <h3 class="section-title"><i class="fas fa-camera"></i> Fotografar Ferramenta</h3>
+                    
+                    <div class="camera-area" id="cameraArea">
+                        <div class="camera-placeholder" id="cameraPlaceholder">
+                            <i class="fas fa-camera"></i>
+                            <p>Nenhuma imagem selecionada</p>
+                        </div>
+                        <img id="toolImagePreview" style="display: none;">
+                    </div>
+                    
+                    <div class="camera-controls">
+                        <button type="button" class="btn btn-primary" id="captureImageBtn">
+                            <i class="fas fa-camera"></i> Tirar Foto
+                        </button>
+                        <button type="button" class="btn btn-warning" id="uploadImageBtn">
+                            <i class="fas fa-upload"></i> Carregar Imagem
+                        </button>
+                        <button type="button" class="btn btn-danger" id="clearImageBtn">
+                            <i class="fas fa-trash"></i> Remover Imagem
+                        </button>
+                    </div>
+                    <p style="text-align: center; margin-top: 10px; color: var(--gray-color); font-size: 12px;">
+                        Tamanho máximo: 5MB | Formatos: JPG, PNG, GIF
+                    </p>
+                </div>
+                
+                <div class="btn-group">
+                    <button type="button" class="btn btn-success" id="saveToolBtn">
+                        <i class="fas fa-save"></i> Salvar Ferramenta
+                    </button>
+                    <button type="button" class="btn btn-primary" id="saveAndNewBtn">
+                        <i class="fas fa-plus-circle"></i> Salvar e Novo
+                    </button>
+                    <button type="button" class="btn btn-warning" id="clearFormBtn">
+                        <i class="fas fa-eraser"></i> Limpar Formulário
+                    </button>
+                    <button type="button" class="btn backup-btn" id="generateQRCodeBtn">
+                        <i class="fas fa-qrcode"></i> Gerar QR Code
+                    </button>
+                </div>
+            </div>
+            
+            <!-- Catálogo Tab -->
+            <div id="catalogo" class="tab-content">
+                <h2 class="section-title"><i class="fas fa-list"></i> Catálogo de Ferramentas</h2>
+                
+                <div class="search-box">
+                    <i class="fas fa-search"></i>
+                    <input type="text" id="searchTool" placeholder="Buscar por nome, código ou categoria...">
+                </div>
+                
+                <div class="btn-group" style="margin-bottom: 20px;">
+                    <button type="button" class="btn btn-primary" id="filterAllBtn">
+                        <i class="fas fa-filter"></i> Todas
+                    </button>
+                    <button type="button" class="btn btn-success" id="filterAvailableBtn">
+                        <i class="fas fa-check-circle"></i> Disponíveis
+                    </button>
+                    <button type="button" class="btn btn-warning" id="filterInUseBtn">
+                        <i class="fas fa-user-check"></i> Em Uso
+                    </button>
+                    <button type="button" class="btn btn-danger" id="filterMaintenanceBtn">
+                        <i class="fas fa-tools"></i> Manutenção
+                    </button>
+                    <button type="button" class="btn btn-secondary" id="syncFromOnlineBtn">
+                        <i class="fas fa-sync-alt"></i> Sincronizar da Nuvem
+                    </button>
+                </div>
+                
+                <div class="tools-list">
+                    <div class="table-container">
+                        <table id="toolsTable">
+                            <thead>
+                                <tr>
+                                    <th>Imagem</th>
+                                    <th>Nome</th>
+                                    <th>Código</th>
+                                    <th>Categoria</th>
+                                    <th>Status</th>
+                                    <th>Localização</th>
+                                    <th>Ações</th>
+                                </tr>
+                            </thead>
+                            <tbody id="toolsTableBody">
+                                <tr id="noToolsRow">
+                                    <td colspan="7" style="text-align: center; padding: 40px; color: var(--gray-color);">
+                                        Nenhuma ferramenta cadastrada. Clique em "Cadastrar Ferramenta" para adicionar.
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+                
+                <div class="storage-info">
+                    <p><strong>Informações de Armazenamento:</strong></p>
+                    <p id="storageInfoText">Carregando informações...</p>
+                    <div class="btn-group" style="margin-top: 10px;">
+                        <button type="button" class="btn btn-sm btn-warning" id="clearCacheBtn">
+                            <i class="fas fa-trash-alt"></i> Limpar Cache Local
+                        </button>
+                        <button type="button" class="btn btn-sm btn-primary" id="optimizeStorageBtn">
+                            <i class="fas fa-compress-alt"></i> Otimizar Armazenamento
+                        </button>
+                        <button type="button" class="btn btn-sm backup-btn" id="quickBackupBtn">
+                            <i class="fas fa-download"></i> Backup Rápido
+                        </button>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Exportar Tab -->
+            <div id="exportar" class="tab-content">
+                <h2 class="section-title"><i class="fas fa-file-excel"></i> Exportar para Excel</h2>
+                
+                <div class="card">
+                    <h3 class="card-title"><i class="fas fa-download"></i> Exportar Dados</h3>
+                    <p style="margin-bottom: 20px;">Exporte todas as ferramentas cadastradas para um arquivo Excel. O arquivo incluirá todas as informações, incluindo links para as imagens.</p>
+                    
+                    <div class="form-group">
+                        <label for="exportRange">Exportar</label>
+                        <select id="exportRange" class="form-control">
+                            <option value="all">Todas as ferramentas</option>
+                            <option value="available">Apenas disponíveis</option>
+                            <option value="inuse">Apenas em uso</option>
+                            <option value="maintenance">Apenas em manutenção</option>
+                            <option value="damaged">Apenas danificadas</option>
+                        </select>
+                    </div>
+                    
+                    <div class="loader" id="exportLoader"></div>
+                    
+                    <div class="btn-group" style="margin-top: 20px;">
+                        <button type="button" class="btn btn-success" id="exportExcelBtn">
+                            <i class="fas fa-file-excel"></i> Exportar para Excel
+                        </button>
+                        <button type="button" class="btn btn-primary" id="exportCSVBtn">
+                            <i class="fas fa-file-csv"></i> Exportar para CSV
+                        </button>
+                        <button type="button" class="btn backup-btn" id="exportJSONBtn">
+                            <i class="fas fa-file-code"></i> Exportar para JSON
+                        </button>
+                    </div>
+                </div>
+                
+                <div class="card">
+                    <h3 class="card-title"><i class="fas fa-cloud-upload-alt"></i> Exportação Online</h3>
+                    <p style="margin-bottom: 20px;">Para exportar os dados para uma planilha online (como Google Sheets), você pode:</p>
+                    
+                    <ol style="margin-left: 20px; margin-bottom: 20px;">
+                        <li>Exportar para Excel e depois importar para o Google Sheets</li>
+                        <li>Ou configurar uma integração direta com a API do Google Sheets (requer configuração adicional)</li>
+                    </ol>
+                    
+                    <div class="btn-group">
+                        <button type="button" class="btn btn-warning" id="simulateOnlineExportBtn">
+                            <i class="fas fa-cloud"></i> Simular Exportação Online
+                        </button>
+                        <button type="button" class="btn btn-primary" id="shareDataBtn">
+                            <i class="fas fa-share-alt"></i> Compartilhar Dados
+                        </button>
+                    </div>
+                </div>
+                
+                <div class="card">
+                    <h3 class="card-title"><i class="fas fa-history"></i> Histórico de Exportações</h3>
+                    <div class="export-history" id="exportHistory">
+                        <p style="text-align: center; color: var(--gray-color); padding: 20px 0;">
+                            Nenhuma exportação realizada ainda
+                        </p>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Banco de Dados Online Tab -->
+            <div id="database" class="tab-content">
+                <h2 class="section-title"><i class="fas fa-database"></i> Banco de Dados Online Gratuito</h2>
+                
+                <div class="config-container">
+                    <div class="storage-status">
+                        <div class="status-indicator" id="dbStatusIndicator"></div>
+                        <h3 id="dbStatusText">Status: Armazenamento Local</h3>
+                    </div>
+                    
+                    <div class="config-step">
+                        <h4 class="step-title"><i class="fas fa-cloud"></i> Passo 1: Criar Conta Gratuita no Supabase</h4>
+                        <div class="step-content">
+                            <p>1. Acesse <a href="https://supabase.com" target="_blank">supabase.com</a></p>
+                            <p>2. Clique em "Start your project"</p>
+                            <p>3. Faça login com sua conta GitHub, Google ou email</p>
+                            <p>4. Crie um novo projeto (é gratuito!)</p>
+                        </div>
+                    </div>
+                    
+                    <div class="config-step">
+                        <h4 class="step-title"><i class="fas fa-table"></i> Passo 2: Criar Tabela no Banco de Dados</h4>
+                        <div class="step-content">
+                            <p>No painel do Supabase, vá para "Table Editor" e crie esta tabela SQL (corrigida):</p>
+                            <div class="code-block">
+-- TABELA CORRIGIDA PARA SUPABASE
+CREATE TABLE IF NOT EXISTS tools (
+    id BIGSERIAL PRIMARY KEY,
+    name TEXT NOT NULL,
+    code TEXT NOT NULL UNIQUE,
+    category TEXT NOT NULL,
+    status TEXT NOT NULL,
+    location TEXT NOT NULL,
+    condition TEXT NOT NULL,
+    description TEXT,
+    observations TEXT,
+    image_url TEXT,
+    created_at TIMESTAMPTZ DEFAULT NOW(),
+    updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+                            </div>
+                            <p>Ou use o botão abaixo para criar automaticamente:</p>
+                            <button type="button" class="btn btn-primary" id="createTableBtn">
+                                <i class="fas fa-plus-circle"></i> Criar Tabela Automaticamente
+                            </button>
+                            <div id="tableCreationResult" style="margin-top: 10px;"></div>
+                        </div>
+                    </div>
+                    
+                    <div class="config-step">
+                        <h4 class="step-title"><i class="fas fa-key"></i> Passo 3: Configurar Chaves de API</h4>
+                        <div class="step-content">
+                            <p>No painel do Supabase, vá para "Settings" → "API" e copie:</p>
+                            
+                            <div class="form-group">
+                                <label for="supabaseUrl">URL do Projeto</label>
+                                <input type="text" id="supabaseUrl" placeholder="https://seu-projeto.supabase.co">
+                            </div>
+                            
+                            <div class="form-group">
+                                <label for="supabaseKey">Chave da API (anon/public)</label>
+                                <input type="text" id="supabaseKey" placeholder="sua-chave-publica-aqui">
+                            </div>
+                            
+                            <div class="btn-group">
+                                <button type="button" class="btn btn-success" id="saveConfigBtn">
+                                    <i class="fas fa-save"></i> Salvar Configuração
+                                </button>
+                                <button type="button" class="btn btn-primary" id="testConnectionBtn">
+                                    <i class="fas fa-plug"></i> Testar Conexão
+                                </button>
+                                <button type="button" class="btn btn-warning" id="resetConfigBtn">
+                                    <i class="fas fa-redo"></i> Redefinir Configuração
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="config-step">
+                        <h4 class="step-title"><i class="fas fa-sync-alt"></i> Passo 4: Sincronizar Dados</h4>
+                        <div class="step-content">
+                            <p>Sincronize seus dados locais com o banco de dados online:</p>
+                            <div class="btn-group">
+                                <button type="button" class="btn btn-success" id="syncToOnlineBtn">
+                                    <i class="fas fa-cloud-upload-alt"></i> Enviar para Nuvem
+                                </button>
+                                <button type="button" class="btn btn-primary" id="syncFromOnlineBtn2">
+                                    <i class="fas fa-cloud-download-alt"></i> Buscar da Nuvem
+                                </button>
+                                <button type="button" class="btn btn-warning" id="syncBothBtn">
+                                    <i class="fas fa-exchange-alt"></i> Sincronizar Ambos
+                                </button>
+                            </div>
+                            
+                            <div class="storage-info" style="margin-top: 15px;">
+                                <p><strong>Configuração de Sincronização:</strong></p>
+                                <div class="form-group">
+                                    <label for="syncLimit">Limite de ferramentas por sincronização:</label>
+                                    <select id="syncLimit" class="form-control">
+                                        <option value="50">50 ferramentas</option>
+                                        <option value="100" selected>100 ferramentas</option>
+                                        <option value="200">200 ferramentas</option>
+                                        <option value="500">500 ferramentas</option>
+                                        <option value="0">Todas (não recomendado)</option>
+                                    </select>
+                                    <small class="text-muted">Limitar ajuda a evitar erros de quota.</small>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="config-step">
+                        <h4 class="step-title"><i class="fas fa-image"></i> Passo 5: Armazenamento de Imagens (Opcional)</h4>
+                        <div class="step-content">
+                            <p>No Supabase, vá para "Storage" e crie um bucket chamado "tools-images":</p>
+                            <div class="btn-group">
+                                <button type="button" class="btn btn-primary" id="createBucketBtn">
+                                    <i class="fas fa-folder-plus"></i> Criar Bucket de Imagens
+                                </button>
+                            </div>
+                            <div id="bucketCreationResult" style="margin-top: 10px;"></div>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="card">
+                    <h3 class="card-title"><i class="fas fa-info-circle"></i> Informações do Banco de Dados</h3>
+                    <div id="dbInfo">
+                        <p style="text-align: center; color: var(--gray-color); padding: 20px 0;">
+                            Configure o banco de dados para ver informações aqui
+                        </p>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Modal para visualizar ferramenta -->
+        <div id="toolModal" class="modal">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h3 class="modal-title">Detalhes da Ferramenta</h3>
+                    <button class="modal-close" id="closeModalBtn">&times;</button>
+                </div>
+                <div class="modal-body" id="toolModalBody">
+                    <!-- Conteúdo do modal será preenchido via JavaScript -->
+                </div>
+            </div>
+        </div>
+        
+        <!-- Modal QR Code -->
+        <div id="qrModal" class="modal">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h3 class="modal-title">QR Code da Ferramenta</h3>
+                    <button class="modal-close" id="closeQRModalBtn">&times;</button>
+                </div>
+                <div class="modal-body" id="qrModalBody">
+                    <!-- QR Code será gerado aqui -->
+                </div>
+            </div>
+        </div>
+        
+        <!-- Input para upload de imagem (oculto) -->
+        <input type="file" id="imageUploadInput" accept="image/*" capture="environment" style="display: none;">
+        
+        <!-- Input para restaurar backup (oculto) -->
+        <input type="file" id="restoreFileInput" accept=".json" style="display: none;">
+    </div>
+
+    <script>
+        // Sistema de gerenciamento de ferramentas com banco de dados online
+        document.addEventListener('DOMContentLoaded', async function() {
+            // ============================================
+            // CONFIGURAÇÃO DE ARMAZENAMENTO (INDEXEDDB)
+            // ============================================
+            
+            // Configurações do IndexedDB
+            const dbName = 'tools_database';
+            const storeName = 'tools_store';
+            let currentStorageType = 'localStorage'; // localStorage, compressed, indexedDB
+            
+            // Inicializar IndexedDB
+            async function initIndexedDB() {
+                return new Promise((resolve, reject) => {
+                    if (!window.indexedDB) {
+                        reject(new Error('IndexedDB não suportado neste navegador'));
+                        return;
+                    }
+                    
+                    const request = indexedDB.open(dbName, 2); // Versão 2 para backup de schema
+                    
+                    request.onerror = () => reject(request.error);
+                    request.onsuccess = () => resolve(request.result);
+                    
+                    request.onupgradeneeded = (event) => {
+                        const db = event.target.result;
+                        if (!db.objectStoreNames.contains(storeName)) {
+                            const store = db.createObjectStore(storeName, { keyPath: 'id' });
+                            // Criar índices para buscas rápidas
+                            store.createIndex('code', 'code', { unique: true });
+                            store.createIndex('category', 'category', { unique: false });
+                            store.createIndex('status', 'status', { unique: false });
+                            store.createIndex('location', 'location', { unique: false });
+                        }
+                    };
+                });
+            }
+            
+            // Salvar ferramentas no IndexedDB
+            async function saveToolsToIndexedDB(toolsArray) {
+                try {
+                    const db = await initIndexedDB();
+                    const transaction = db.transaction(storeName, 'readwrite');
+                    const store = transaction.objectStore(storeName);
+                    
+                    // Limpar store existente
+                    await store.clear();
+                    
+                    // Adicionar cada ferramenta
+                    for (const tool of toolsArray) {
+                        await store.put(tool);
+                    }
+                    
+                    return new Promise((resolve, reject) => {
+                        transaction.oncomplete = () => {
+                            currentStorageType = 'indexedDB';
+                            updateStorageInfo();
+                            resolve();
+                        };
+                        transaction.onerror = () => reject(transaction.error);
+                    });
+                } catch (error) {
+                    console.error('Erro ao salvar no IndexedDB:', error);
+                    throw error;
+                }
+            }
+            
+            // Carregar ferramentas do IndexedDB
+            async function loadToolsFromIndexedDB() {
+                try {
+                    const db = await initIndexedDB();
+                    return new Promise((resolve, reject) => {
+                        const transaction = db.transaction(storeName, 'readonly');
+                        const store = transaction.objectStore(storeName);
+                        const request = store.getAll();
+                        
+                        request.onerror = () => reject(request.error);
+                        request.onsuccess = () => {
+                            currentStorageType = 'indexedDB';
+                            updateStorageInfo();
+                            resolve(request.result);
+                        };
+                    });
+                } catch (error) {
+                    console.error('Erro ao carregar do IndexedDB:', error);
+                    return [];
+                }
+            }
+            
+            // Função para comprimir dados
+            function compressToolsData(toolsArray) {
+                try {
+                    if (typeof LZString !== 'undefined') {
+                        return LZString.compressToUTF16(JSON.stringify(toolsArray));
+                    }
+                    return JSON.stringify(toolsArray); // Fallback
+                } catch (error) {
+                    console.error('Erro ao comprimir dados:', error);
+                    return JSON.stringify(toolsArray);
+                }
+            }
+            
+            // Função para descomprimir dados
+            function decompressToolsData(compressedString) {
+                try {
+                    if (typeof LZString !== 'undefined' && compressedString && compressedString.length > 0) {
+                        const decompressed = LZString.decompressFromUTF16(compressedString);
+                        if (decompressed) {
+                            return JSON.parse(decompressed);
+                        }
+                    }
+                    // Se falhar ou não for string comprimida, tenta como JSON normal
+                    return JSON.parse(compressedString);
+                } catch (error) {
+                    console.error('Erro ao descomprimir dados:', error);
+                    return [];
+                }
+            }
+            
+            // Otimizar armazenamento
+            async function optimizeStorage() {
+                try {
+                    // 1. Comprimir imagens grandes
+                    let optimizedCount = 0;
+                    for (let tool of tools) {
+                        if (tool.image && tool.image.startsWith('data:image') && tool.image.length > 100000) {
+                            // Imagem maior que 100KB, comprimir
+                            const compressed = await compressImage(tool.image);
+                            if (compressed) {
+                                tool.image = compressed;
+                                optimizedCount++;
+                            }
+                        }
+                    }
+                    
+                    // 2. Remover dados desnecessários
+                    tools.forEach(tool => {
+                        // Limpar campos vazios
+                        if (!tool.description) delete tool.description;
+                        if (!tool.observations) delete tool.observations;
+                    });
+                    
+                    // 3. Salvar otimizado
+                    await saveTools();
+                    
+                    showNotification(`Armazenamento otimizado! ${optimizedCount} imagens comprimidas.`, 'success');
+                } catch (error) {
+                    console.error('Erro ao otimizar armazenamento:', error);
+                    showNotification('Erro ao otimizar armazenamento.', 'error');
+                }
+            }
+            
+            // Comprimir imagem
+            async function compressImage(dataUrl, maxWidth = 800, quality = 0.7) {
+                return new Promise((resolve) => {
+                    const img = new Image();
+                    img.onload = function() {
+                        const canvas = document.createElement('canvas');
+                        let width = img.width;
+                        let height = img.height;
+                        
+                        // Redimensionar se for muito grande
+                        if (width > maxWidth) {
+                            height = (height * maxWidth) / width;
+                            width = maxWidth;
+                        }
+                        
+                        canvas.width = width;
+                        canvas.height = height;
+                        
+                        const ctx = canvas.getContext('2d');
+                        ctx.drawImage(img, 0, 0, width, height);
+                        
+                        // Converter para JPEG com qualidade reduzida
+                        resolve(canvas.toDataURL('image/jpeg', quality));
+                    };
+                    img.onerror = () => resolve(null);
+                    img.src = dataUrl;
+                });
+            }
+            
+            // Atualizar informações de armazenamento na interface
+            function updateStorageInfo() {
+                const storageTypeElement = document.getElementById('storageType');
+                const storageInfoText = document.getElementById('storageInfoText');
+                
+                if (storageTypeElement) {
+                    let typeText = '';
+                    let typeClass = '';
+                    
+                    switch(currentStorageType) {
+                        case 'indexedDB':
+                            typeText = 'IndexedDB';
+                            typeClass = 'status-completed';
+                            break;
+                        case 'compressed':
+                            typeText = 'Comprimido';
+                            typeClass = 'status-ontrack';
+                            break;
+                        case 'localStorage':
+                            typeText = 'Local';
+                            typeClass = 'status-delayed';
+                            break;
+                        default:
+                            typeText = 'Local';
+                            typeClass = 'status-delayed';
+                    }
+                    
+                    storageTypeElement.textContent = typeText;
+                    storageTypeElement.className = `status-badge ${typeClass}`;
+                }
+                
+                if (storageInfoText) {
+                    let info = `Tipo: ${currentStorageType.toUpperCase()} | `;
+                    info += `Ferramentas: ${tools.length} | `;
+                    
+                    // Estimar tamanho
+                    const dataSize = JSON.stringify(tools).length;
+                    const sizeKB = Math.round(dataSize / 1024);
+                    info += `Tamanho: ${sizeKB} KB`;
+                    
+                    if (currentStorageType === 'compressed') {
+                        const compressedSize = localStorage.getItem('tools_compressed')?.length || 0;
+                        const compressedKB = Math.round(compressedSize / 1024);
+                        const savings = Math.round((1 - compressedKB/sizeKB) * 100);
+                        info += ` | Comprimido: ${compressedKB} KB (${savings}% economia)`;
+                    }
+                    
+                    storageInfoText.textContent = info;
+                }
+            }
+            
+            // Carregar ferramentas (com fallback para diferentes métodos)
+            async function loadInitialTools() {
+                try {
+                    // Tentar IndexedDB primeiro
+                    if (window.indexedDB) {
+                        const indexedDBTools = await loadToolsFromIndexedDB();
+                        if (indexedDBTools && indexedDBTools.length > 0) {
+                            tools = indexedDBTools;
+                            console.log('Dados carregados do IndexedDB:', tools.length, 'ferramentas');
+                            addActivity('Sistema iniciado', `Carregadas ${tools.length} ferramentas do IndexedDB`);
+                            return;
+                        }
+                    }
+                    
+                    // Tentar dados comprimidos
+                    const compressedData = localStorage.getItem('tools_compressed');
+                    if (compressedData) {
+                        tools = decompressToolsData(compressedData);
+                        if (tools && tools.length > 0) {
+                            currentStorageType = 'compressed';
+                            console.log('Dados carregados de storage comprimido:', tools.length, 'ferramentas');
+                            addActivity('Sistema iniciado', `Carregadas ${tools.length} ferramentas (comprimidas)`);
+                            return;
+                        }
+                    }
+                    
+                    // Tentar localStorage normal
+                    const localData = localStorage.getItem('tools');
+                    if (localData) {
+                        tools = JSON.parse(localData) || [];
+                        currentStorageType = 'localStorage';
+                        console.log('Dados carregados do localStorage:', tools.length, 'ferramentas');
+                        addActivity('Sistema iniciado', `Carregadas ${tools.length} ferramentas`);
+                    } else {
+                        // Dados de exemplo
+                        tools = getExampleTools();
+                        console.log('Usando dados de exemplo:', tools.length, 'ferramentas');
+                        addActivity('Sistema iniciado', 'Usando dados de exemplo');
+                    }
+                } catch (error) {
+                    console.error('Erro ao carregar ferramentas:', error);
+                    tools = getExampleTools();
+                    addActivity('Erro ao carregar', 'Carregados dados de exemplo');
+                } finally {
+                    updateStorageInfo();
+                }
+            }
+            
+            // Salvar ferramentas (com fallback)
+            async function saveTools() {
+                try {
+                    // Tentar IndexedDB primeiro
+                    if (window.indexedDB) {
+                        await saveToolsToIndexedDB(tools);
+                        console.log('Dados salvos no IndexedDB');
+                        return;
+                    }
+                    
+                    // Fallback: tentar compressão
+                    if (typeof LZString !== 'undefined') {
+                        const compressedData = compressToolsData(tools);
+                        localStorage.setItem('tools_compressed', compressedData);
+                        currentStorageType = 'compressed';
+                        console.log('Dados salvos comprimidos no localStorage');
+                    } else {
+                        // Fallback final: localStorage normal
+                        localStorage.setItem('tools', JSON.stringify(tools));
+                        currentStorageType = 'localStorage';
+                        console.log('Dados salvos no localStorage');
+                    }
+                } catch (error) {
+                    console.error('Erro ao salvar ferramentas:', error);
+                    
+                    // Último recurso: salvar versão mínima
+                    const minimalTools = tools.map(tool => ({
+                        id: tool.id,
+                        name: tool.name,
+                        code: tool.code,
+                        category: tool.category,
+                        status: tool.status,
+                        location: tool.location,
+                        condition: tool.condition
+                    }));
+                    
+                    localStorage.setItem('tools_minimal', JSON.stringify(minimalTools));
+                    showNotification('Dados salvos em formato simplificado (espaço insuficiente)', 'warning');
+                } finally {
+                    updateStorageInfo();
+                }
+            }
+            
+            // ============================================
+            // CÓDIGO PRINCIPAL DO SISTEMA
+            // ============================================
+            
+            // Variáveis globais
+            let tools = [];
+            let currentToolImage = null;
+            let chartInstance = null;
+            let isEditing = false;
+            let editingToolId = null;
+            let supabaseClient = null;
+            let isOnlineMode = false;
+            let activities = [];
+            
+            // Configurações do banco de dados
+            const dbConfig = JSON.parse(localStorage.getItem('supabaseConfig')) || {
+                url: '',
+                key: ''
+            };
+            
+            // Atualizar contadores no cabeçalho
+            function updateHeaderStats() {
+                document.getElementById('totalTools').textContent = tools.length;
+                document.getElementById('lastUpdate').textContent = new Date().toLocaleDateString('pt-BR');
+                
+                // Atualizar status do armazenamento
+                const statusElement = document.getElementById('storageStatus');
+                const statusIndicator = document.getElementById('dbStatusIndicator');
+                
+                if (isOnlineMode && supabaseClient) {
+                    statusElement.textContent = 'Online';
+                    statusElement.className = 'status-badge status-completed';
+                    statusIndicator.className = 'status-indicator online';
+                    document.getElementById('dbStatusText').textContent = 'Status: Conectado ao Banco Online';
+                } else {
+                    statusElement.textContent = 'Local';
+                    statusElement.className = 'status-badge status-ontrack';
+                    statusIndicator.className = 'status-indicator';
+                    document.getElementById('dbStatusText').textContent = 'Status: Armazenamento Local';
+                }
+                
+                // Atualizar estatísticas
+                updateStatistics();
+            }
+            
+            // Adicionar atividade
+            function addActivity(title, description) {
+                const activity = {
+                    id: Date.now(),
+                    title,
+                    description,
+                    timestamp: new Date().toISOString(),
+                    type: 'info'
+                };
+                
+                activities.unshift(activity);
+                if (activities.length > 10) activities = activities.slice(0, 10);
+                
+                updateActivitiesList();
+            }
+            
+            // Atualizar lista de atividades
+            function updateActivitiesList() {
+                const activitiesList = document.getElementById('activitiesList');
+                if (!activitiesList) return;
+                
+                if (activities.length === 0) {
+                    activitiesList.innerHTML = '<p style="text-align: center; color: var(--gray-color);">Nenhuma atividade registrada</p>';
+                    return;
+                }
+                
+                let html = '';
+                activities.forEach(activity => {
+                    const timeAgo = getTimeAgo(activity.timestamp);
+                    html += `
+                        <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 15px; padding-bottom: 10px; border-bottom: 1px solid rgba(0,0,0,0.1);">
+                            <div style="width: 10px; height: 10px; border-radius: 50%; 
+                                background-color: ${activity.type === 'error' ? 'var(--danger-color)' : 
+                                                activity.type === 'warning' ? 'var(--warning-color)' : 
+                                                'var(--success-color)'}"></div>
+                            <div style="flex: 1;">
+                                <p style="font-weight: 500; margin-bottom: 2px;">${activity.title}</p>
+                                <p style="font-size: 12px; color: var(--gray-color); margin-bottom: 2px;">${activity.description}</p>
+                                <p style="font-size: 11px; color: var(--gray-color);">${timeAgo}</p>
+                            </div>
+                        </div>
+                    `;
+                });
+                
+                activitiesList.innerHTML = html;
+            }
+            
+            // Calcular tempo decorrido
+            function getTimeAgo(timestamp) {
+                const now = new Date();
+                const past = new Date(timestamp);
+                const diffMs = now - past;
+                const diffMins = Math.floor(diffMs / 60000);
+                const diffHours = Math.floor(diffMs / 3600000);
+                const diffDays = Math.floor(diffMs / 86400000);
+                
+                if (diffMins < 1) return 'Agora mesmo';
+                if (diffMins < 60) return `${diffMins} min atrás`;
+                if (diffHours < 24) return `${diffHours} h atrás`;
+                return `${diffDays} dias atrás`;
+            }
+            
+            // Atualizar estatísticas no dashboard
+            function updateStatistics() {
+                const total = tools.length;
+                
+                if (total === 0) {
+                    document.getElementById('availablePercent').textContent = '0%';
+                    document.getElementById('inUsePercent').textContent = '0%';
+                    document.getElementById('maintenancePercent').textContent = '0%';
+                    document.getElementById('damagedPercent').textContent = '0%';
+                    
+                    document.getElementById('availableBar').style.width = '0%';
+                    document.getElementById('inUseBar').style.width = '0%';
+                    document.getElementById('maintenanceBar').style.width = '0%';
+                    document.getElementById('damagedBar').style.width = '0%';
+                    
+                    document.getElementById('categoryStats').innerHTML = '<p style="text-align: center; color: var(--gray-color); padding: 20px 0;">Nenhuma ferramenta cadastrada</p>';
+                    
+                    if (chartInstance) {
+                        chartInstance.destroy();
+                    }
+                    
+                    return;
+                }
+                
+                // Calcular estatísticas por status
+                const availableCount = tools.filter(tool => tool.status === 'Disponível').length;
+                const inUseCount = tools.filter(tool => tool.status === 'Em Uso').length;
+                const maintenanceCount = tools.filter(tool => tool.status === 'Manutenção').length;
+                const damagedCount = tools.filter(tool => tool.status === 'Danificado').length;
+                
+                const availablePercent = Math.round((availableCount / total) * 100);
+                const inUsePercent = Math.round((inUseCount / total) * 100);
+                const maintenancePercent = Math.round((maintenanceCount / total) * 100);
+                const damagedPercent = Math.round((damagedCount / total) * 100);
+                
+                document.getElementById('availablePercent').textContent = `${availablePercent}%`;
+                document.getElementById('inUsePercent').textContent = `${inUsePercent}%`;
+                document.getElementById('maintenancePercent').textContent = `${maintenancePercent}%`;
+                document.getElementById('damagedPercent').textContent = `${damagedPercent}%`;
+                
+                document.getElementById('availableBar').style.width = `${availablePercent}%`;
+                document.getElementById('inUseBar').style.width = `${inUsePercent}%`;
+                document.getElementById('maintenanceBar').style.width = `${maintenancePercent}%`;
+                document.getElementById('damagedBar').style.width = `${damagedPercent}%`;
+                
+                // Calcular estatísticas por categoria
+                const categories = {};
+                tools.forEach(tool => {
+                    categories[tool.category] = (categories[tool.category] || 0) + 1;
+                });
+                
+                let categoryHTML = '';
+                for (const [category, count] of Object.entries(categories)) {
+                    const percent = Math.round((count / total) * 100);
+                    categoryHTML += `
+                        <div class="progress-container">
+                            <div class="progress-label">
+                                <span>${category}</span>
+                                <span>${count} (${percent}%)</span>
+                            </div>
+                            <div class="progress-bar">
+                                <div class="progress-fill" style="width: ${percent}%; background-color: ${getRandomColor()}"></div>
+                            </div>
+                        </div>
+                    `;
+                }
+                
+                document.getElementById('categoryStats').innerHTML = categoryHTML;
+                
+                // Atualizar gráfico de localização
+                updateLocationChart();
+            }
+            
+            // Gerar cor aleatória
+            function getRandomColor() {
+                const colors = [
+                    '#3498db', '#2ecc71', '#e74c3c', '#f39c12', '#9b59b6',
+                    '#1abc9c', '#d35400', '#c0392b', '#16a085', '#8e44ad'
+                ];
+                return colors[Math.floor(Math.random() * colors.length)];
+            }
+            
+            // Atualizar gráfico de localização
+            function updateLocationChart() {
+                const ctx = document.getElementById('locationChart').getContext('2d');
+                
+                // Contar ferramentas por localização
+                const locations = {};
+                tools.forEach(tool => {
+                    locations[tool.location] = (locations[tool.location] || 0) + 1;
+                });
+                
+                const locationLabels = Object.keys(locations);
+                const locationData = Object.values(locations);
+                
+                // Destruir gráfico anterior se existir
+                if (chartInstance) {
+                    chartInstance.destroy();
+                }
+                
+                // Criar novo gráfico
+                chartInstance = new Chart(ctx, {
+                    type: 'bar',
+                    data: {
+                        labels: locationLabels,
+                        datasets: [{
+                            label: 'Ferramentas',
+                            data: locationData,
+                            backgroundColor: locationLabels.map(() => getRandomColor()),
+                            borderColor: 'rgba(255, 255, 255, 0.8)',
+                            borderWidth: 1
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        plugins: {
+                            legend: {
+                                display: false
+                            },
+                            tooltip: {
+                                callbacks: {
+                                    label: function(context) {
+                                        return `${context.label}: ${context.raw} ferramentas`;
+                                    }
+                                }
+                            }
+                        },
+                        scales: {
+                            y: {
+                                beginAtZero: true,
+                                ticks: {
+                                    stepSize: 1
+                                }
+                            }
+                        }
+                    }
+                });
+            }
+            
+            // Validar formulário
+            function validateForm() {
+                let isValid = true;
+                
+                // Obter valores dos campos
+                const toolName = document.getElementById('toolName').value.trim();
+                const toolCode = document.getElementById('toolCode').value.trim();
+                const toolCategory = document.getElementById('toolCategory').value;
+                const toolStatus = document.getElementById('toolStatus').value;
+                const toolLocation = document.getElementById('toolLocation').value;
+                const toolCondition = document.getElementById('toolCondition').value;
+                
+                // Limpar erros anteriores
+                document.querySelectorAll('.error').forEach(el => el.classList.remove('error'));
+                document.querySelectorAll('.error-message').forEach(el => el.style.display = 'none');
+                
+                // Sanitizar inputs
+                const sanitizedName = sanitizeInput(toolName);
+                const sanitizedCode = sanitizeInput(toolCode);
+                
+                // Validar nome
+                if (!sanitizedName) {
+                    document.getElementById('toolName').classList.add('error');
+                    document.getElementById('toolNameError').style.display = 'block';
+                    isValid = false;
+                }
+                
+                // Validar código
+                if (!sanitizedCode) {
+                    document.getElementById('toolCode').classList.add('error');
+                    document.getElementById('toolCodeError').textContent = 'O código/número de série é obrigatório';
+                    document.getElementById('toolCodeError').style.display = 'block';
+                    isValid = false;
+                } else if (isEditing) {
+                    // Se estiver editando, verificar se o código já existe (exceto para a própria ferramenta)
+                    if (tools.some(tool => tool.code === sanitizedCode && tool.id !== editingToolId)) {
+                        document.getElementById('toolCode').classList.add('error');
+                        document.getElementById('toolCodeError').textContent = 'Já existe uma ferramenta com este código/número de série';
+                        document.getElementById('toolCodeError').style.display = 'block';
+                        isValid = false;
+                    }
+                } else {
+                    // Se for um novo cadastro, verificar se o código já existe
+                    if (tools.some(tool => tool.code === sanitizedCode)) {
+                        document.getElementById('toolCode').classList.add('error');
+                        document.getElementById('toolCodeError').textContent = 'Já existe uma ferramenta com este código/número de série';
+                        document.getElementById('toolCodeError').style.display = 'block';
+                        isValid = false;
+                    }
+                }
+                
+                // Validar categoria
+                if (!toolCategory) {
+                    document.getElementById('toolCategory').classList.add('error');
+                    document.getElementById('toolCategoryError').style.display = 'block';
+                    isValid = false;
+                }
+                
+                // Validar status
+                if (!toolStatus) {
+                    document.getElementById('toolStatus').classList.add('error');
+                    document.getElementById('toolStatusError').style.display = 'block';
+                    isValid = false;
+                }
+                
+                // Validar localização
+                if (!toolLocation) {
+                    document.getElementById('toolLocation').classList.add('error');
+                    document.getElementById('toolLocationError').style.display = 'block';
+                    isValid = false;
+                }
+                
+                // Validar condição
+                if (!toolCondition) {
+                    document.getElementById('toolCondition').classList.add('error');
+                    document.getElementById('toolConditionError').style.display = 'block';
+                    isValid = false;
+                }
+                
+                return isValid;
+            }
+            
+            // Sanitizar input
+            function sanitizeInput(input) {
+                return input
+                    .replace(/[<>]/g, '')
+                    .trim()
+                    .substring(0, 500);
+            }
+            
+            // Salvar ferramenta
+            async function saveTool() {
+                // Validar formulário
+                if (!validateForm()) {
+                    showNotification('Preencha todos os campos obrigatórios corretamente!', 'error');
+                    return false;
+                }
+                
+                // Obter valores dos campos
+                const toolName = sanitizeInput(document.getElementById('toolName').value.trim());
+                const toolCode = sanitizeInput(document.getElementById('toolCode').value.trim());
+                const toolCategory = document.getElementById('toolCategory').value;
+                const toolStatus = document.getElementById('toolStatus').value;
+                const toolLocation = document.getElementById('toolLocation').value;
+                const toolCondition = document.getElementById('toolCondition').value;
+                const toolDescription = sanitizeInput(document.getElementById('toolDescription').value.trim());
+                const toolObservations = sanitizeInput(document.getElementById('toolObservations').value.trim());
+                
+                let imageUrl = currentToolImage;
+                
+                // Comprimir imagem se for muito grande
+                if (imageUrl && imageUrl.startsWith('data:image') && imageUrl.length > 100000) {
+                    imageUrl = await compressImage(imageUrl);
+                }
+                
+                // Se estiver no modo online e tiver imagem, fazer upload
+                if (isOnlineMode && supabaseClient && imageUrl) {
+                    imageUrl = await uploadImageToSupabase(imageUrl, toolCode);
+                }
+                
+                if (isEditing && editingToolId) {
+                    // Atualizar ferramenta existente
+                    return await updateTool(editingToolId, imageUrl);
+                } else {
+                    // Criar nova ferramenta
+                    const newTool = {
+                        id: Date.now(), // ID único baseado no timestamp
+                        name: toolName,
+                        code: toolCode,
+                        category: toolCategory,
+                        status: toolStatus,
+                        location: toolLocation,
+                        condition: toolCondition,
+                        description: toolDescription,
+                        observations: toolObservations,
+                        image: imageUrl,
+                        createdAt: new Date().toISOString(),
+                        updatedAt: new Date().toISOString()
+                    };
+                    
+                    // Adicionar à lista local
+                    tools.push(newTool);
+                    
+                    // Salvar usando o sistema de armazenamento
+                    await saveTools();
+                    
+                    // Salvar online se estiver conectado
+                    if (isOnlineMode && supabaseClient) {
+                        await saveToolToSupabase(newTool);
+                    }
+                    
+                    // Atualizar estatísticas
+                    updateHeaderStats();
+                    updateStatistics();
+                    
+                    // Adicionar atividade
+                    addActivity('Ferramenta cadastrada', `${toolName} (${toolCode})`);
+                    
+                    // Mostrar notificação
+                    showNotification('Ferramenta cadastrada com sucesso!', 'success');
+                    
+                    // Limpar imagem atual
+                    currentToolImage = null;
+                    
+                    return true;
+                }
+            }
+            
+            // Salvar ferramenta no Supabase
+            async function saveToolToSupabase(tool) {
+                try {
+                    // Verificar se já existe uma ferramenta com o mesmo código
+                    const { data: existingTools } = await supabaseClient
+                        .from('tools')
+                        .select('id')
+                        .eq('code', tool.code)
+                        .limit(1);
+                    
+                    if (existingTools && existingTools.length > 0) {
+                        // Atualizar ferramenta existente
+                        const { error } = await supabaseClient
+                            .from('tools')
+                            .update({
+                                name: tool.name,
+                                category: tool.category,
+                                status: tool.status,
+                                location: tool.location,
+                                condition: tool.condition,
+                                description: tool.description,
+                                observations: tool.observations,
+                                image_url: tool.image,
+                                updated_at: new Date().toISOString()
+                            })
+                            .eq('code', tool.code);
+                        
+                        if (error) throw error;
+                        return true;
+                    } else {
+                        // Inserir nova ferramenta
+                        const { data, error } = await supabaseClient
+                            .from('tools')
+                            .insert([{
+                                name: tool.name,
+                                code: tool.code,
+                                category: tool.category,
+                                status: tool.status,
+                                location: tool.location,
+                                condition: tool.condition,
+                                description: tool.description,
+                                observations: tool.observations,
+                                image_url: tool.image,
+                                created_at: tool.createdAt,
+                                updated_at: tool.updatedAt
+                            }]);
+                        
+                        if (error) throw error;
+                        return true;
+                    }
+                } catch (error) {
+                    console.error('Erro ao salvar no Supabase:', error);
+                    showNotification('Erro ao salvar na nuvem. Dados salvos localmente.', 'warning');
+                    return false;
+                }
+            }
+            
+            // Upload de imagem para o Supabase Storage
+            async function uploadImageToSupabase(imageDataUrl, toolCode) {
+                try {
+                    // Verificar se o bucket existe
+                    if (!supabaseClient) {
+                        return imageDataUrl;
+                    }
+                    
+                    // Converter data URL para blob
+                    const response = await fetch(imageDataUrl);
+                    const blob = await response.blob();
+                    
+                    // Criar nome do arquivo
+                    const fileName = `tool_${toolCode}_${Date.now()}.jpg`;
+                    
+                    // Tentar fazer upload
+                    const { data, error } = await supabaseClient.storage
+                        .from('tools-images')
+                        .upload(fileName, blob, {
+                            contentType: 'image/jpeg',
+                            upsert: true
+                        });
+                    
+                    if (error) {
+                        // Se o bucket não existir, criar primeiro
+                        if (error.message.includes('bucket') || error.message.includes('not found')) {
+                            showNotification('Bucket de imagens não encontrado. Criando...', 'warning');
+                            await createStorageBucket();
+                            
+                            // Tentar novamente
+                            const { data: retryData, error: retryError } = await supabaseClient.storage
+                                .from('tools-images')
+                                .upload(fileName, blob, {
+                                    contentType: 'image/jpeg',
+                                    upsert: true
+                                });
+                            
+                            if (retryError) throw retryError;
+                            
+                            // Obter URL pública
+                            const { data: { publicUrl } } = supabaseClient.storage
+                                .from('tools-images')
+                                .getPublicUrl(fileName);
+                            
+                            return publicUrl;
+                        } else {
+                            throw error;
+                        }
+                    }
+                    
+                    // Obter URL pública
+                    const { data: { publicUrl } } = supabaseClient.storage
+                        .from('tools-images')
+                        .getPublicUrl(fileName);
+                    
+                    return publicUrl;
+                } catch (error) {
+                    console.error('Erro ao fazer upload da imagem:', error);
+                    return imageDataUrl; // Retornar data URL local em caso de erro
+                }
+            }
+            
+            // Criar bucket de storage no Supabase
+            async function createStorageBucket() {
+                try {
+                    const result = document.getElementById('bucketCreationResult');
+                    
+                    // Verificar se o bucket já existe
+                    const { data: buckets, error: listError } = await supabaseClient.storage.listBuckets();
+                    
+                    if (listError) throw listError;
+                    
+                    const bucketExists = buckets.some(bucket => bucket.name === 'tools-images');
+                    
+                    if (!bucketExists) {
+                        // Criar novo bucket
+                        const { data, error } = await supabaseClient.storage.createBucket('tools-images', {
+                            public: true,
+                            fileSizeLimit: 5242880, // 5MB
+                            allowedMimeTypes: ['image/jpeg', 'image/png', 'image/gif']
+                        });
+                        
+                        if (error) throw error;
+                        
+                        result.innerHTML = '<p style="color: green;">✅ Bucket de imagens criado com sucesso!</p>';
+                        showNotification('Bucket de imagens criado com sucesso!', 'success');
+                        addActivity('Bucket criado', 'Bucket tools-images criado no Supabase');
+                        return true;
+                    } else {
+                        result.innerHTML = '<p style="color: blue;">ℹ️ Bucket de imagens já existe.</p>';
+                        return true;
+                    }
+                } catch (error) {
+                    console.error('Erro ao criar bucket:', error);
+                    const result = document.getElementById('bucketCreationResult');
+                    result.innerHTML = `<p style="color: red;">❌ Erro ao criar bucket: ${error.message}</p>`;
+                    showNotification('Erro ao criar bucket de imagens', 'error');
+                    return false;
+                }
+            }
+            
+            // Limpar formulário
+            function clearForm() {
+                document.getElementById('toolForm').reset();
+                document.getElementById('cameraPlaceholder').style.display = 'block';
+                document.getElementById('toolImagePreview').style.display = 'none';
+                document.getElementById('toolImagePreview').src = '';
+                currentToolImage = null;
+                
+                // Limpar erros
+                document.querySelectorAll('.error').forEach(el => el.classList.remove('error'));
+                document.querySelectorAll('.error-message').forEach(el => el.style.display = 'none');
+                
+                // Resetar modo de edição
+                isEditing = false;
+                editingToolId = null;
+                
+                // Restaurar botão salvar
+                const saveBtn = document.getElementById('saveToolBtn');
+                saveBtn.innerHTML = '<i class="fas fa-save"></i> Salvar Ferramenta';
+                saveBtn.onclick = saveTool;
+            }
+            
+            // Mostrar notificação
+            function showNotification(message, type) {
+                // Remover notificações existentes
+                const existingNotifications = document.querySelectorAll('.notification');
+                existingNotifications.forEach(notification => notification.remove());
+                
+                // Criar nova notificação
+                const notification = document.createElement('div');
+                notification.className = `notification notification-${type}`;
+                notification.innerHTML = `
+                    <i class="fas fa-${type === 'success' ? 'check-circle' : type === 'warning' ? 'exclamation-triangle' : 'exclamation-circle'}"></i>
+                    <span>${message}</span>
+                `;
+                
+                document.body.appendChild(notification);
+                
+                // Remover após 5 segundos
+                setTimeout(() => {
+                    if (notification.parentNode) {
+                        notification.parentNode.removeChild(notification);
+                    }
+                }, 5000);
+            }
+            
+            // Carregar lista de ferramentas
+            function loadToolsList(filter = 'all') {
+                const tbody = document.getElementById('toolsTableBody');
+                const noToolsRow = document.getElementById('noToolsRow');
+                
+                // Limpar tabela (exceto a linha de nenhuma ferramenta)
+                tbody.innerHTML = '';
+                tbody.appendChild(noToolsRow);
+                
+                // Filtrar ferramentas se necessário
+                let filteredTools = tools;
+                
+                if (filter === 'available') {
+                    filteredTools = tools.filter(tool => tool.status === 'Disponível');
+                } else if (filter === 'inuse') {
+                    filteredTools = tools.filter(tool => tool.status === 'Em Uso');
+                } else if (filter === 'maintenance') {
+                    filteredTools = tools.filter(tool => tool.status === 'Manutenção');
+                } else if (filter === 'damaged') {
+                    filteredTools = tools.filter(tool => tool.status === 'Danificado');
+                }
+                
+                // Aplicar busca se houver
+                const searchTerm = document.getElementById('searchTool')?.value.toLowerCase();
+                if (searchTerm) {
+                    filteredTools = filteredTools.filter(tool => 
+                        tool.name.toLowerCase().includes(searchTerm) ||
+                        tool.code.toLowerCase().includes(searchTerm) ||
+                        tool.category.toLowerCase().includes(searchTerm)
+                    );
+                }
+                
+                // Se não houver ferramentas, mostrar mensagem
+                if (filteredTools.length === 0) {
+                    noToolsRow.style.display = 'table-row';
+                    noToolsRow.innerHTML = `<td colspan="7" style="text-align: center; padding: 40px; color: var(--gray-color);">
+                        Nenhuma ferramenta encontrada${searchTerm ? ' para "' + searchTerm + '"' : ''}
+                    </td>`;
+                    return;
+                }
+                
+                // Esconder mensagem de nenhuma ferramenta
+                noToolsRow.style.display = 'none';
+                
+                // Adicionar cada ferramenta à tabela
+                filteredTools.forEach(tool => {
+                    const row = document.createElement('tr');
+                    
+                    // Determinar cor do status
+                    let statusClass = '';
+                    if (tool.status === 'Disponível') statusClass = 'status-completed';
+                    else if (tool.status === 'Em Uso') statusClass = 'status-ontrack';
+                    else if (tool.status === 'Manutenção') statusClass = 'status-delayed';
+                    else statusClass = 'status-delayed';
+                    
+                    row.innerHTML = `
+                        <td>
+                            ${tool.image 
+                                ? `<img src="${tool.image}" alt="${tool.name}" class="tool-image" style="cursor: pointer;" onclick="viewImage('${tool.image}', '${tool.name}')">`
+                                : '<i class="fas fa-image" style="font-size: 24px; color: #ccc;"></i>'
+                            }
+                        </td>
+                        <td>${tool.name}</td>
+                        <td><strong>${tool.code}</strong></td>
+                        <td>${tool.category}</td>
+                        <td><span class="status-badge ${statusClass}">${tool.status}</span></td>
+                        <td>${tool.location}</td>
+                        <td>
+                            <div class="action-buttons">
+                                <button class="action-btn action-btn-view" data-id="${tool.id}" title="Visualizar">
+                                    <i class="fas fa-eye"></i>
+                                </button>
+                                <button class="action-btn action-btn-edit" data-id="${tool.id}" title="Editar">
+                                    <i class="fas fa-edit"></i>
+                                </button>
+                                <button class="action-btn action-btn-delete" data-id="${tool.id}" title="Excluir">
+                                    <i class="fas fa-trash"></i>
+                                </button>
+                            </div>
+                        </td>
+                    `;
+                    
+                    tbody.appendChild(row);
+                });
+                
+                // Adicionar eventos aos botões de ação
+                document.querySelectorAll('.action-btn-view').forEach(btn => {
+                    btn.addEventListener('click', function() {
+                        const toolId = parseInt(this.getAttribute('data-id'));
+                        viewToolDetails(toolId);
+                    });
+                });
+                
+                document.querySelectorAll('.action-btn-edit').forEach(btn => {
+                    btn.addEventListener('click', function() {
+                        const toolId = parseInt(this.getAttribute('data-id'));
+                        editTool(toolId);
+                    });
+                });
+                
+                document.querySelectorAll('.action-btn-delete').forEach(btn => {
+                    btn.addEventListener('click', function() {
+                        const toolId = parseInt(this.getAttribute('data-id'));
+                        deleteTool(toolId);
+                    });
+                });
+            }
+            
+            // Visualizar imagem em tela cheia
+            window.viewImage = function(imageUrl, toolName) {
+                const modalBody = document.getElementById('toolModalBody');
+                modalBody.innerHTML = `
+                    <div style="text-align: center;">
+                        <h4 style="margin-bottom: 20px;">${toolName}</h4>
+                        <img src="${imageUrl}" alt="${toolName}" style="max-width: 100%; max-height: 70vh; border-radius: 8px;">
+                        <div style="margin-top: 20px;">
+                            <a href="${imageUrl}" download="${toolName.replace(/\s+/g, '_')}.jpg" class="btn btn-primary">
+                                <i class="fas fa-download"></i> Baixar Imagem
+                            </a>
+                        </div>
+                    </div>
+                `;
+                document.getElementById('toolModal').style.display = 'flex';
+            };
+            
+            // Visualizar detalhes da ferramenta
+            function viewToolDetails(toolId) {
+                const tool = tools.find(t => t.id === toolId);
+                if (!tool) return;
+                
+                const modalBody = document.getElementById('toolModalBody');
+                
+                modalBody.innerHTML = `
+                    <div style="display: grid; grid-template-columns: 1fr 2fr; gap: 30px;">
+                        <div>
+                            ${tool.image 
+                                ? `<img src="${tool.image}" alt="${tool.name}" style="width: 100%; border-radius: 8px; cursor: pointer;" onclick="viewImage('${tool.image}', '${tool.name}')">`
+                                : '<div style="background-color: #f5f5f5; height: 200px; display: flex; align-items: center; justify-content: center; border-radius: 8px;"><i class="fas fa-tools" style="font-size: 60px; color: #ccc;"></i></div>'
+                            }
+                        </div>
+                        <div>
+                            <h3 style="margin-bottom: 10px; color: var(--primary-color);">${tool.name}</h3>
+                            <p style="color: var(--gray-color); margin-bottom: 20px;">Código: ${tool.code}</p>
+                            
+                            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin-bottom: 20px;">
+                                <div>
+                                    <p style="font-weight: 500; margin-bottom: 5px;">Categoria</p>
+                                    <p>${tool.category}</p>
+                                </div>
+                                <div>
+                                    <p style="font-weight: 500; margin-bottom: 5px;">Status</p>
+                                    <p><span class="status-badge ${tool.status === 'Disponível' ? 'status-completed' : tool.status === 'Em Uso' ? 'status-ontrack' : 'status-delayed'}">${tool.status}</span></p>
+                                </div>
+                                <div>
+                                    <p style="font-weight: 500; margin-bottom: 5px;">Localização</p>
+                                    <p>${tool.location}</p>
+                                </div>
+                                <div>
+                                    <p style="font-weight: 500; margin-bottom: 5px;">Condição</p>
+                                    <p>${tool.condition}</p>
+                                </div>
+                            </div>
+                            
+                            ${tool.description ? `
+                                <div style="margin-bottom: 15px;">
+                                    <p style="font-weight: 500; margin-bottom: 5px;">Descrição</p>
+                                    <p>${tool.description}</p>
+                                </div>
+                            ` : ''}
+                            
+                            ${tool.observations ? `
+                                <div style="margin-bottom: 15px;">
+                                    <p style="font-weight: 500; margin-bottom: 5px;">Observações</p>
+                                    <p>${tool.observations}</p>
+                                </div>
+                            ` : ''}
+                            
+                            <div style="margin-top: 25px; padding-top: 15px; border-top: 1px solid var(--border-color); font-size: 14px; color: var(--gray-color);">
+                                <p>Cadastrada em: ${new Date(tool.createdAt).toLocaleString('pt-BR')}</p>
+                                <p>Última atualização: ${new Date(tool.updatedAt).toLocaleString('pt-BR')}</p>
+                                ${tool.image && tool.image.includes('supabase') ? '<p><i class="fas fa-cloud"></i> Imagem armazenada na nuvem</p>' : ''}
+                            </div>
+                            
+                            <div style="margin-top: 20px;">
+                                <button class="btn btn-primary" onclick="generateQRCodeForTool(${toolId})">
+                                    <i class="fas fa-qrcode"></i> Gerar QR Code
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                `;
+                
+                // Mostrar modal
+                document.getElementById('toolModal').style.display = 'flex';
+            }
+            
+            // Gerar QR Code para ferramenta
+            window.generateQRCodeForTool = function(toolId) {
+                const tool = tools.find(t => t.id === toolId);
+                if (!tool) return;
+                
+                // Fechar modal atual
+                document.getElementById('toolModal').style.display = 'none';
+                
+                // Criar conteúdo para QR Code
+                const qrContent = JSON.stringify({
+                    name: tool.name,
+                    code: tool.code,
+                    category: tool.category,
+                    status: tool.status,
+                    location: tool.location,
+                    condition: tool.condition,
+                    description: tool.description,
+                    lastUpdate: tool.updatedAt
+                }, null, 2);
+                
+                // Mostrar modal de QR Code
+                const qrModalBody = document.getElementById('qrModalBody');
+                qrModalBody.innerHTML = `
+                    <div style="text-align: center;">
+                        <h4 style="margin-bottom: 20px;">QR Code para: ${tool.name}</h4>
+                        <div id="qrcode" style="display: inline-block; padding: 20px; background: white; border-radius: 8px;"></div>
+                        <p style="margin-top: 20px; color: var(--gray-color); font-size: 14px;">
+                            Use este QR Code para identificar rapidamente a ferramenta.
+                        </p>
+                        <div class="btn-group" style="margin-top: 20px;">
+                            <button class="btn btn-primary" onclick="downloadQRCode()">
+                                <i class="fas fa-download"></i> Baixar QR Code
+                            </button>
+                            <button class="btn btn-success" onclick="printQRCode()">
+                                <i class="fas fa-print"></i> Imprimir
+                            </button>
+                        </div>
+                    </div>
+                `;
+                
+                // Gerar QR Code (usando biblioteca externa se disponível)
+                generateQRCodeImage(qrContent, 'qrcode');
+                
+                document.getElementById('qrModal').style.display = 'flex';
+            };
+            
+            // Função simples para gerar QR Code
+            function generateQRCodeImage(content, elementId) {
+                const element = document.getElementById(elementId);
+                if (!element) return;
+                
+                // Método simples para gerar QR Code (em produção, use uma biblioteca como qrcode.js)
+                element.innerHTML = `
+                    <div style="text-align: center; color: var(--gray-color);">
+                        <i class="fas fa-qrcode" style="font-size: 200px; color: #3498db;"></i>
+                        <p style="margin-top: 10px;">Instale uma biblioteca QR Code para ver o código real</p>
+                        <p style="font-size: 12px; margin-top: 10px;">Conteúdo do QR:</p>
+                        <div style="background: #f5f5f5; padding: 10px; border-radius: 4px; font-family: monospace; font-size: 10px; word-break: break-all; max-height: 100px; overflow-y: auto;">
+                            ${content}
+                        </div>
+                    </div>
+                `;
+            }
+            
+            // Editar ferramenta
+            function editTool(toolId) {
+                // Mudar para aba de cadastro
+                document.querySelectorAll('.tab-button').forEach(btn => btn.classList.remove('active'));
+                document.querySelectorAll('.tab-content').forEach(content => content.classList.remove('active'));
+                
+                document.querySelector('[data-tab="cadastro"]').classList.add('active');
+                document.getElementById('cadastro').classList.add('active');
+                
+                // Preencher formulário com dados da ferramenta
+                const tool = tools.find(t => t.id === toolId);
+                if (!tool) return;
+                
+                document.getElementById('toolName').value = tool.name;
+                document.getElementById('toolCode').value = tool.code;
+                document.getElementById('toolCategory').value = tool.category;
+                document.getElementById('toolStatus').value = tool.status;
+                document.getElementById('toolLocation').value = tool.location;
+                document.getElementById('toolCondition').value = tool.condition;
+                document.getElementById('toolDescription').value = tool.description || '';
+                document.getElementById('toolObservations').value = tool.observations || '';
+                
+                // Carregar imagem se existir
+                if (tool.image) {
+                    currentToolImage = tool.image;
+                    document.getElementById('cameraPlaceholder').style.display = 'none';
+                    document.getElementById('toolImagePreview').style.display = 'block';
+                    document.getElementById('toolImagePreview').src = tool.image;
+                }
+                
+                // Configurar modo de edição
+                isEditing = true;
+                editingToolId = toolId;
+                
+                // Mudar comportamento do botão salvar para edição
+                const saveBtn = document.getElementById('saveToolBtn');
+                saveBtn.innerHTML = '<i class="fas fa-save"></i> Atualizar Ferramenta';
+                
+                showNotification('Editando ferramenta. Atualize os dados e clique em "Atualizar Ferramenta".', 'warning');
+                addActivity('Editando ferramenta', `${tool.name} (${tool.code})`);
+            }
+            
+            // Atualizar ferramenta
+            async function updateTool(toolId, imageUrl = null) {
+                const toolIndex = tools.findIndex(t => t.id === toolId);
+                if (toolIndex === -1) return false;
+                
+                // Obter valores dos campos
+                const toolName = sanitizeInput(document.getElementById('toolName').value.trim());
+                const toolCode = sanitizeInput(document.getElementById('toolCode').value.trim());
+                const toolCategory = document.getElementById('toolCategory').value;
+                const toolStatus = document.getElementById('toolStatus').value;
+                const toolLocation = document.getElementById('toolLocation').value;
+                const toolCondition = document.getElementById('toolCondition').value;
+                const toolDescription = sanitizeInput(document.getElementById('toolDescription').value.trim());
+                const toolObservations = sanitizeInput(document.getElementById('toolObservations').value.trim());
+                
+                // Se não fornecer nova imagem, manter a atual
+                const finalImage = imageUrl || tools[toolIndex].image;
+                
+                // Atualizar ferramenta local
+                tools[toolIndex] = {
+                    ...tools[toolIndex],
+                    name: toolName,
+                    code: toolCode,
+                    category: toolCategory,
+                    status: toolStatus,
+                    location: toolLocation,
+                    condition: toolCondition,
+                    description: toolDescription,
+                    observations: toolObservations,
+                    image: finalImage,
+                    updatedAt: new Date().toISOString()
+                };
+                
+                // Salvar usando o sistema de armazenamento
+                await saveTools();
+                
+                // Atualizar online se estiver conectado
+                if (isOnlineMode && supabaseClient) {
+                    await updateToolInSupabase(tools[toolIndex]);
+                }
+                
+                // Atualizar estatísticas
+                updateHeaderStats();
+                updateStatistics();
+                loadToolsList();
+                
+                // Restaurar modo normal
+                isEditing = false;
+                editingToolId = null;
+                
+                // Restaurar botão salvar
+                const saveBtn = document.getElementById('saveToolBtn');
+                saveBtn.innerHTML = '<i class="fas fa-save"></i> Salvar Ferramenta';
+                
+                // Adicionar atividade
+                addActivity('Ferramenta atualizada', `${toolName} (${toolCode})`);
+                
+                // Mostrar notificação
+                showNotification('Ferramenta atualizada com sucesso!', 'success');
+                
+                // Limpar formulário
+                clearForm();
+                
+                return true;
+            }
+            
+            // Atualizar ferramenta no Supabase
+            async function updateToolInSupabase(tool) {
+                try {
+                    const { data, error } = await supabaseClient
+                        .from('tools')
+                        .update({
+                            name: tool.name,
+                            category: tool.category,
+                            status: tool.status,
+                            location: tool.location,
+                            condition: tool.condition,
+                            description: tool.description,
+                            observations: tool.observations,
+                            image_url: tool.image,
+                            updated_at: new Date().toISOString()
+                        })
+                        .eq('code', tool.code);
+                    
+                    if (error) throw error;
+                    return true;
+                } catch (error) {
+                    console.error('Erro ao atualizar no Supabase:', error);
+                    showNotification('Erro ao atualizar na nuvem. Dados atualizados localmente.', 'warning');
+                    return false;
+                }
+            }
+            
+            // Excluir ferramenta
+            async function deleteTool(toolId) {
+                if (!confirm('Tem certeza que deseja excluir esta ferramenta?')) {
+                    return;
+                }
+                
+                // Buscar ferramenta por ID local
+                const tool = tools.find(t => t.id === toolId);
+                if (!tool) {
+                    showNotification('Ferramenta não encontrada!', 'error');
+                    return;
+                }
+                
+                const toolCode = tool.code; // Usar código como identificador único
+                const toolName = tool.name;
+                
+                // 1. Apagar LOCALMENTE (usando ID)
+                tools = tools.filter(t => t.id !== toolId);
+                
+                // Salvar após remoção
+                await saveTools();
+                
+                // 2. Apagar do SUPABASE (se estiver online)
+                if (isOnlineMode && supabaseClient && toolCode) {
+                    try {
+                        const { data, error } = await supabaseClient
+                            .from('tools')
+                            .delete()
+                            .eq('code', toolCode); // Usar código no Supabase
+                        
+                        if (error) {
+                            console.error('Erro ao apagar do Supabase:', error);
+                            showNotification('Ferramenta apagada localmente, mas erro na nuvem.', 'warning');
+                        } else {
+                            showNotification('Ferramenta apagada localmente e na nuvem!', 'success');
+                        }
+                    } catch (error) {
+                        console.error('Erro na conexão com Supabase:', error);
+                        showNotification('Ferramenta apagada localmente (sem conexão com nuvem).', 'warning');
+                    }
+                } else {
+                    showNotification('Ferramenta apagada localmente!', 'success');
+                }
+                
+                // 3. Adicionar atividade
+                addActivity('Ferramenta excluída', `${toolName} (${toolCode})`);
+                
+                // 4. Atualizar interface
+                updateHeaderStats();
+                updateStatistics();
+                loadToolsList();
+            }
+            
+            // Configurar cliente Supabase
+            function setupSupabaseClient() {
+                if (dbConfig.url && dbConfig.key) {
+                    try {
+                        supabaseClient = supabase.createClient(dbConfig.url, dbConfig.key);
+                        isOnlineMode = true;
+                        showNotification('Conexão com banco de dados estabelecida!', 'success');
+                        updateHeaderStats();
+                        updateDatabaseInfo();
+                        addActivity('Conexão estabelecida', 'Conectado ao Supabase');
+                        return true;
+                    } catch (error) {
+                        console.error('Erro ao criar cliente Supabase:', error);
+                        showNotification('Erro na configuração do banco de dados', 'error');
+                        return false;
+                    }
+                }
+                return false;
+            }
+            
+            // Testar conexão com Supabase
+            async function testSupabaseConnection() {
+                if (!supabaseClient) {
+                    showNotification('Configure as credenciais do Supabase primeiro', 'error');
+                    return false;
+                }
+                
+                try {
+                    const { data, error } = await supabaseClient
+                        .from('tools')
+                        .select('count')
+                        .limit(1);
+                    
+                    if (error) {
+                        // Se a tabela não existir, criar
+                        if (error.message.includes('does not exist')) {
+                            showNotification('Tabela não existe. Criando tabela...', 'warning');
+                            await createTableInSupabase();
+                            return true;
+                        }
+                        throw error;
+                    }
+                    
+                    showNotification('Conexão com banco de dados bem-sucedida!', 'success');
+                    updateDatabaseInfo();
+                    addActivity('Teste de conexão', 'Conexão com Supabase bem-sucedida');
+                    return true;
+                } catch (error) {
+                    console.error('Erro na conexão:', error);
+                    showNotification('Falha na conexão com o banco de dados: ' + error.message, 'error');
+                    addActivity('Erro de conexão', 'Falha ao conectar com Supabase');
+                    return false;
+                }
+            }
+            
+            // Criar tabela no Supabase
+            async function createTableInSupabase() {
+                try {
+                    const result = document.getElementById('tableCreationResult');
+                    result.innerHTML = '<p style="color: blue;">Criando tabela...</p>';
+                    
+                    // SQL simplificado e corrigido
+                    const createTableSQL = `
+                        CREATE TABLE IF NOT EXISTS tools (
+                            id BIGSERIAL PRIMARY KEY,
+                            name TEXT NOT NULL,
+                            code TEXT NOT NULL UNIQUE,
+                            category TEXT NOT NULL,
+                            status TEXT NOT NULL,
+                            location TEXT NOT NULL,
+                            condition TEXT NOT NULL,
+                            description TEXT,
+                            observations TEXT,
+                            image_url TEXT,
+                            created_at TIMESTAMPTZ DEFAULT NOW(),
+                            updated_at TIMESTAMPTZ DEFAULT NOW()
+                        );
+                    `;
+                    
+                    // Executar SQL
+                    const { data, error } = await supabaseClient.rpc('exec_sql', { sql: createTableSQL });
+                    
+                    if (error) {
+                        // Tentar método alternativo
+                        console.log('Tentando método alternativo...');
+                        
+                        // Método alternativo: usar insert para criar tabela indiretamente
+                        const { error: insertError } = await supabaseClient
+                            .from('tools')
+                            .insert([{
+                                name: 'Teste',
+                                code: 'TEST-001',
+                                category: 'Teste',
+                                status: 'Disponível',
+                                location: 'Teste',
+                                condition: 'Nova',
+                                description: 'Tabela de teste'
+                            }])
+                            .select();
+                        
+                        if (insertError && insertError.message.includes('does not exist')) {
+                            // A tabela realmente não existe
+                            result.innerHTML = `<p style="color: red;">❌ Erro: Execute o SQL manualmente no Supabase.</p>
+                                              <p>Vá no painel do Supabase → SQL Editor e execute:</p>
+                                              <div class="code-block">${createTableSQL}</div>`;
+                            showNotification('Execute o SQL manualmente no Supabase', 'error');
+                            return false;
+                        } else {
+                            // Tabela criada com sucesso (ou já existe)
+                            result.innerHTML = '<p style="color: green;">✅ Tabela criada/verificada com sucesso!</p>';
+                            showNotification('Tabela criada/verificada com sucesso!', 'success');
+                            updateDatabaseInfo();
+                            addActivity('Tabela criada', 'Tabela tools criada no Supabase');
+                            return true;
+                        }
+                    }
+                    
+                    result.innerHTML = '<p style="color: green;">✅ Tabela criada com sucesso!</p>';
+                    showNotification('Tabela criada com sucesso!', 'success');
+                    updateDatabaseInfo();
+                    addActivity('Tabela criada', 'Tabela tools criada no Supabase');
+                    return true;
+                } catch (error) {
+                    console.error('Erro ao criar tabela:', error);
+                    const result = document.getElementById('tableCreationResult');
+                    result.innerHTML = `<p style="color: red;">❌ Erro: ${error.message}</p>
+                                      <p>Execute este SQL manualmente no Supabase:</p>
+                                      <div class="code-block">
+CREATE TABLE tools (
+    id SERIAL PRIMARY KEY,
+    name TEXT NOT NULL,
+    code TEXT NOT NULL UNIQUE,
+    category TEXT NOT NULL,
+    status TEXT NOT NULL,
+    location TEXT NOT NULL,
+    condition TEXT NOT NULL,
+    description TEXT,
+    observations TEXT,
+    image_url TEXT,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);</div>`;
+                    showNotification('Erro ao criar tabela. Execute o SQL manualmente.', 'error');
+                    return false;
+                }
+            }
+            
+            // Atualizar informações do banco de dados
+            async function updateDatabaseInfo() {
+                if (!supabaseClient) return;
+                
+                try {
+                    const dbInfoElement = document.getElementById('dbInfo');
+                    
+                    // Obter contagem de ferramentas
+                    const { count, error: countError } = await supabaseClient
+                        .from('tools')
+                        .select('*', { count: 'exact', head: true });
+                    
+                    if (countError) throw countError;
+                    
+                    // Obter informações da tabela
+                    const { data: toolsData, error: toolsError } = await supabaseClient
+                        .from('tools')
+                        .select('*')
+                        .limit(5)
+                        .order('created_at', { ascending: false });
+                    
+                    if (toolsError) throw toolsError;
+                    
+                    let infoHTML = `
+                        <div style="padding: 20px;">
+                            <h4 style="margin-bottom: 15px;">Informações do Banco de Dados</h4>
+                            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin-bottom: 20px;">
+                                <div class="info-item">
+                                    <div class="info-label">Status</div>
+                                    <div class="info-value"><span class="status-badge status-completed">Conectado</span></div>
+                                </div>
+                                <div class="info-item">
+                                    <div class="info-label">Ferramentas</div>
+                                    <div class="info-value">${count || 0}</div>
+                                </div>
+                            </div>
+                    `;
+                    
+                    if (toolsData && toolsData.length > 0) {
+                        infoHTML += `
+                            <h5 style="margin-bottom: 10px;">Ferramentas Recentes:</h5>
+                            <div style="max-height: 200px; overflow-y: auto;">
+                                <table style="width: 100%; font-size: 14px;">
+                                    <thead>
+                                        <tr>
+                                            <th>Nome</th>
+                                            <th>Código</th>
+                                            <th>Status</th>
+                                            <th>Data</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                        `;
+                        
+                        toolsData.forEach(tool => {
+                            infoHTML += `
+                                <tr>
+                                    <td>${tool.name}</td>
+                                    <td>${tool.code}</td>
+                                    <td><span class="status-badge ${tool.status === 'Disponível' ? 'status-completed' : tool.status === 'Em Uso' ? 'status-ontrack' : 'status-delayed'}">${tool.status}</span></td>
+                                    <td>${new Date(tool.created_at).toLocaleDateString('pt-BR')}</td>
+                                </tr>
+                            `;
+                        });
+                        
+                        infoHTML += `
+                                    </tbody>
+                                </table>
+                            </div>
+                        `;
+                    } else {
+                        infoHTML += `<p style="text-align: center; color: var(--gray-color);">Nenhuma ferramenta no banco de dados.</p>`;
+                    }
+                    
+                    infoHTML += `</div>`;
+                    dbInfoElement.innerHTML = infoHTML;
+                    
+                } catch (error) {
+                    console.error('Erro ao obter informações do banco:', error);
+                    const dbInfoElement = document.getElementById('dbInfo');
+                    dbInfoElement.innerHTML = `
+                        <div style="padding: 20px;">
+                            <h4 style="margin-bottom: 15px;">Informações do Banco de Dados</h4>
+                            <p style="color: var(--warning-color); text-align: center;">Erro ao conectar ao banco: ${error.message}</p>
+                        </div>
+                    `;
+                }
+            }
+            
+            // Sincronizar dados locais para a nuvem
+            async function syncToCloud() {
+                if (!supabaseClient) {
+                    showNotification('Configure o banco de dados online primeiro', 'error');
+                    return;
+                }
+                
+                showNotification('Sincronizando dados para a nuvem...', 'warning');
+                addActivity('Sincronização', 'Enviando dados para a nuvem');
+                
+                let successCount = 0;
+                let errorCount = 0;
+                
+                for (const tool of tools) {
+                    try {
+                        // Verificar se a ferramenta já existe na nuvem
+                        const { data: existingTool } = await supabaseClient
+                            .from('tools')
+                            .select('code')
+                            .eq('code', tool.code)
+                            .single();
+                        
+                        if (existingTool) {
+                            // Atualizar existente
+                            const { error } = await supabaseClient
+                                .from('tools')
+                                .update({
+                                    name: tool.name,
+                                    category: tool.category,
+                                    status: tool.status,
+                                    location: tool.location,
+                                    condition: tool.condition,
+                                    description: tool.description,
+                                    observations: tool.observations,
+                                    image_url: tool.image,
+                                    updated_at: tool.updatedAt
+                                })
+                                .eq('code', tool.code);
+                            
+                            if (error) throw error;
+                        } else {
+                            // Inserir nova
+                            const { error } = await supabaseClient
+                                .from('tools')
+                                .insert([{
+                                    name: tool.name,
+                                    code: tool.code,
+                                    category: tool.category,
+                                    status: tool.status,
+                                    location: tool.location,
+                                    condition: tool.condition,
+                                    description: tool.description,
+                                    observations: tool.observations,
+                                    image_url: tool.image,
+                                    created_at: tool.createdAt,
+                                    updated_at: tool.updatedAt
+                                }]);
+                            
+                            if (error) throw error;
+                        }
+                        
+                        successCount++;
+                    } catch (error) {
+                        console.error('Erro ao sincronizar ferramenta:', tool.code, error);
+                        errorCount++;
+                    }
+                }
+                
+                showNotification(`Sincronização concluída: ${successCount} sucessos, ${errorCount} erros`, 
+                    errorCount === 0 ? 'success' : 'warning');
+                    
+                // Adicionar atividade
+                addActivity('Sincronização concluída', `${successCount} ferramentas enviadas, ${errorCount} erros`);
+                    
+                // Atualizar informações do banco
+                updateDatabaseInfo();
+            }
+            
+            // Sincronizar dados da nuvem para local
+            async function syncFromCloud() {
+                if (!supabaseClient) {
+                    showNotification('Configure o banco de dados online primeiro', 'error');
+                    return;
+                }
+                
+                showNotification('Buscando dados da nuvem...', 'warning');
+                addActivity('Sincronização', 'Buscando dados da nuvem');
+                
+                try {
+                    // Obter limite de sincronização
+                    const syncLimit = parseInt(document.getElementById('syncLimit').value) || 100;
+                    
+                    // LIMITAR a quantidade de dados buscados
+                    let query = supabaseClient
+                        .from('tools')
+                        .select('*')
+                        .order('updated_at', { ascending: false });
+                    
+                    if (syncLimit > 0) {
+                        query = query.limit(syncLimit);
+                    }
+                    
+                    const { data: cloudTools, error } = await query;
+                    
+                    if (error) throw error;
+                    
+                    if (syncLimit > 0 && cloudTools.length >= syncLimit) {
+                        showNotification(`Atenção: Apenas as ${syncLimit} ferramentas mais recentes foram carregadas`, 'warning');
+                    }
+                    
+                    // Converter para o formato local
+                    const convertedTools = cloudTools.map(tool => ({
+                        id: tool.id || Date.now() + Math.random(), // Usar ID do Supabase ou criar novo
+                        name: tool.name,
+                        code: tool.code,
+                        category: tool.category,
+                        status: tool.status,
+                        location: tool.location,
+                        condition: tool.condition,
+                        description: tool.description,
+                        observations: tool.observations,
+                        image: tool.image_url,
+                        createdAt: tool.created_at || new Date().toISOString(),
+                        updatedAt: tool.updated_at || new Date().toISOString()
+                    }));
+                    
+                    // Substituir todas as ferramentas locais
+                    tools = convertedTools;
+                    
+                    // Salvar usando o sistema de armazenamento
+                    await saveTools();
+                    
+                    // Atualizar interface
+                    updateHeaderStats();
+                    updateStatistics();
+                    loadToolsList();
+                    
+                    showNotification(`Dados da nuvem carregados: ${convertedTools.length} ferramentas`, 'success');
+                    
+                    // Adicionar atividade
+                    addActivity('Dados carregados', `${convertedTools.length} ferramentas da nuvem`);
+                    
+                    // Atualizar informações do banco
+                    updateDatabaseInfo();
+                    
+                } catch (error) {
+                    console.error('Erro ao buscar dados da nuvem:', error);
+                    
+                    // Mensagem de erro mais específica
+                    if (error.message.includes('quota') || error.message.includes('exceeded')) {
+                        showNotification('Erro: Espaço de armazenamento insuficiente. Limite o número de ferramentas na configuração.', 'error');
+                    } else if (error.message.includes('does not exist')) {
+                        showNotification('Erro: Tabela não existe. Crie a tabela primeiro.', 'error');
+                        document.getElementById('tableCreationResult').innerHTML = 
+                            '<p style="color: red;">❌ Tabela não existe. Clique em "Criar Tabela Automaticamente".</p>';
+                    } else {
+                        showNotification('Erro ao buscar dados da nuvem: ' + error.message, 'error');
+                    }
+                    
+                    addActivity('Erro de sincronização', 'Falha ao buscar dados da nuvem');
+                }
+            }
+            
+            // Limpar cache local
+            async function clearLocalCache() {
+                if (!confirm('Isso vai limpar TODOS os dados locais. Tem certeza?')) {
+                    return;
+                }
+                
+                try {
+                    // Limpar localStorage
+                    localStorage.removeItem('tools');
+                    localStorage.removeItem('tools_compressed');
+                    localStorage.removeItem('tools_minimal');
+                    localStorage.removeItem('activities');
+                    
+                    // Limpar IndexedDB
+                    if (window.indexedDB) {
+                        indexedDB.deleteDatabase(dbName);
+                    }
+                    
+                    // Limpar variável local
+                    tools = getExampleTools();
+                    activities = [];
+                    
+                    // Salvar dados de exemplo
+                    await saveTools();
+                    
+                    // Atualizar interface
+                    updateHeaderStats();
+                    updateStatistics();
+                    loadToolsList();
+                    updateActivitiesList();
+                    
+                    showNotification('Cache local limpo com sucesso!', 'success');
+                    addActivity('Cache limpo', 'Todos os dados locais foram removidos');
+                } catch (error) {
+                    console.error('Erro ao limpar cache:', error);
+                    showNotification('Erro ao limpar cache: ' + error.message, 'error');
+                }
+            }
+            
+            // Fazer backup dos dados
+            async function createBackup() {
+                try {
+                    const backupData = {
+                        tools: tools,
+                        activities: activities,
+                        config: dbConfig,
+                        timestamp: new Date().toISOString(),
+                        version: '1.0',
+                        count: tools.length
+                    };
+                    
+                    const blob = new Blob([JSON.stringify(backupData, null, 2)], { type: 'application/json' });
+                    const url = URL.createObjectURL(blob);
+                    const a = document.createElement('a');
+                    a.href = url;
+                    a.download = `backup_ferramentas_${new Date().toISOString().split('T')[0]}_${tools.length}_itens.json`;
+                    a.click();
+                    URL.revokeObjectURL(url);
+                    
+                    showNotification('Backup criado com sucesso!', 'success');
+                    addActivity('Backup criado', `${tools.length} ferramentas salvas`);
+                    
+                    // Adicionar ao histórico de exportações
+                    addToExportHistory('backup', tools.length, 'JSON');
+                    
+                } catch (error) {
+                    console.error('Erro no backup:', error);
+                    showNotification('Erro ao criar backup: ' + error.message, 'error');
+                }
+            }
+            
+            // Restaurar backup
+            function restoreBackup(file) {
+                const reader = new FileReader();
+                reader.onload = async function(event) {
+                    try {
+                        const backupData = JSON.parse(event.target.result);
+                        
+                        if (!backupData.tools || !Array.isArray(backupData.tools)) {
+                            throw new Error('Formato de backup inválido');
+                        }
+                        
+                        if (!confirm(`Restaurar backup com ${backupData.tools.length} ferramentas? Os dados atuais serão substituídos.`)) {
+                            return;
+                        }
+                        
+                        tools = backupData.tools;
+                        activities = backupData.activities || [];
+                        if (backupData.config) {
+                            Object.assign(dbConfig, backupData.config);
+                            localStorage.setItem('supabaseConfig', JSON.stringify(dbConfig));
+                        }
+                        
+                        await saveTools();
+                        
+                        updateHeaderStats();
+                        updateStatistics();
+                        loadToolsList();
+                        updateActivitiesList();
+                        
+                        showNotification('Backup restaurado com sucesso!', 'success');
+                        addActivity('Backup restaurado', `${tools.length} ferramentas carregadas`);
+                        
+                    } catch (error) {
+                        console.error('Erro ao restaurar backup:', error);
+                        showNotification('Erro ao restaurar backup: ' + error.message, 'error');
+                    }
+                };
+                reader.onerror = function() {
+                    showNotification('Erro ao ler arquivo de backup', 'error');
+                };
+                reader.readAsText(file);
+            }
+            
+            // Exportar para Excel
+            function exportToExcel(range = 'all') {
+                // Mostrar loader
+                const loader = document.getElementById('exportLoader');
+                loader.style.display = 'block';
+                
+                // Filtrar ferramentas se necessário
+                let filteredTools = tools;
+                
+                if (range === 'available') {
+                    filteredTools = tools.filter(tool => tool.status === 'Disponível');
+                } else if (range === 'inuse') {
+                    filteredTools = tools.filter(tool => tool.status === 'Em Uso');
+                } else if (range === 'maintenance') {
+                    filteredTools = tools.filter(tool => tool.status === 'Manutenção');
+                } else if (range === 'damaged') {
+                    filteredTools = tools.filter(tool => tool.status === 'Danificado');
+                }
+                
+                if (filteredTools.length === 0) {
+                    loader.style.display = 'none';
+                    showNotification('Nenhuma ferramenta para exportar!', 'error');
+                    return;
+                }
+                
+                // Preparar dados para exportação
+                const exportData = filteredTools.map(tool => ({
+                    'Nome': tool.name,
+                    'Código/Número de Série': tool.code,
+                    'Categoria': tool.category,
+                    'Status': tool.status,
+                    'Localização': tool.location,
+                    'Condição': tool.condition,
+                    'Descrição': tool.description,
+                    'Observações': tool.observations,
+                    'Imagem': tool.image ? 'Sim' : 'Não',
+                    'Data de Cadastro': new Date(tool.createdAt).toLocaleString('pt-BR'),
+                    'Última Atualização': new Date(tool.updatedAt).toLocaleString('pt-BR')
+                }));
+                
+                // Criar worksheet
+                const ws = XLSX.utils.json_to_sheet(exportData);
+                
+                // Criar workbook
+                const wb = XLSX.utils.book_new();
+                XLSX.utils.book_append_sheet(wb, ws, 'Ferramentas');
+                
+                // Ajustar largura das colunas
+                const wscols = [
+                    {wch: 20}, {wch: 25}, {wch: 15}, {wch: 15}, {wch: 15},
+                    {wch: 15}, {wch: 30}, {wch: 30}, {wch: 10}, {wch: 20}, {wch: 20}
+                ];
+                ws['!cols'] = wscols;
+                
+                // Gerar nome do arquivo
+                const fileName = `ferramentas_${range}_${new Date().toISOString().slice(0, 10)}.xlsx`;
+                
+                // Salvar arquivo
+                try {
+                    XLSX.writeFile(wb, fileName);
+                    addToExportHistory(range, filteredTools.length, 'Excel');
+                    showNotification(`Exportação concluída! ${filteredTools.length} ferramentas exportadas.`, 'success');
+                    addActivity('Exportação Excel', `${filteredTools.length} ferramentas exportadas`);
+                } catch (error) {
+                    console.error('Erro ao exportar Excel:', error);
+                    showNotification('Erro ao exportar para Excel. Tente novamente.', 'error');
+                } finally {
+                    loader.style.display = 'none';
+                }
+            }
+            
+            // Exportar para JSON
+            function exportToJSON(range = 'all') {
+                // Filtrar ferramentas se necessário
+                let filteredTools = tools;
+                
+                if (range === 'available') {
+                    filteredTools = tools.filter(tool => tool.status === 'Disponível');
+                } else if (range === 'inuse') {
+                    filteredTools = tools.filter(tool => tool.status === 'Em Uso');
+                } else if (range === 'maintenance') {
+                    filteredTools = tools.filter(tool => tool.status === 'Manutenção');
+                } else if (range === 'damaged') {
+                    filteredTools = tools.filter(tool => tool.status === 'Danificado');
+                }
+                
+                if (filteredTools.length === 0) {
+                    showNotification('Nenhuma ferramenta para exportar!', 'error');
+                    return;
+                }
+                
+                const exportData = {
+                    tools: filteredTools,
+                    exportDate: new Date().toISOString(),
+                    count: filteredTools.length,
+                    range: range
+                };
+                
+                const blob = new Blob([JSON.stringify(exportData, null, 2)], { type: 'application/json' });
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = `ferramentas_${range}_${new Date().toISOString().slice(0, 10)}.json`;
+                a.click();
+                URL.revokeObjectURL(url);
+                
+                addToExportHistory(range, filteredTools.length, 'JSON');
+                showNotification(`Exportação JSON concluída! ${filteredTools.length} ferramentas exportadas.`, 'success');
+                addActivity('Exportação JSON', `${filteredTools.length} ferramentas exportadas`);
+            }
+            
+            // Adicionar ao histórico de exportações
+            function addToExportHistory(range, count, format = 'Excel') {
+                const exportHistory = document.getElementById('exportHistory');
+                
+                if (exportHistory.querySelector('p')) {
+                    exportHistory.innerHTML = '';
+                }
+                
+                const historyItem = document.createElement('div');
+                historyItem.style.display = 'flex';
+                historyItem.style.justifyContent = 'space-between';
+                historyItem.style.alignItems = 'center';
+                historyItem.style.padding = '15px';
+                historyItem.style.borderBottom = '1px solid var(--border-color)';
+                
+                const rangeText = {
+                    'all': 'Todas as ferramentas',
+                    'available': 'Ferramentas disponíveis',
+                    'inuse': 'Ferramentas em uso',
+                    'maintenance': 'Ferramentas em manutenção',
+                    'damaged': 'Ferramentas danificadas',
+                    'backup': 'Backup completo'
+                }[range] || range;
+                
+                historyItem.innerHTML = `
+                    <div>
+                        <p style="font-weight: 500; margin-bottom: 5px;">${rangeText}</p>
+                        <p style="font-size: 14px; color: var(--gray-color);">${count} ferramentas exportadas</p>
+                    </div>
+                    <div>
+                        <span class="status-badge status-ontrack">${format}</span>
+                        <p style="font-size: 14px; color: var(--gray-color); margin-top: 5px;">${new Date().toLocaleString('pt-BR')}</p>
+                    </div>
+                `;
+                
+                exportHistory.insertBefore(historyItem, exportHistory.firstChild);
+            }
+            
+            // Funções auxiliares
+            function getExampleTools() {
+                return [
+                    {
+                        id: 1,
+                        name: "Martelo de Borracha",
+                        code: "MART-001",
+                        category: "Mecânica",
+                        status: "Disponível",
+                        location: "Armazém 1",
+                        condition: "Boa",
+                        description: "Martelo de borracha para serviços de acabamento",
+                        observations: "Usar apenas para superfícies delicadas",
+                        image: "",
+                        createdAt: "2023-10-15T09:30:00Z",
+                        updatedAt: "2023-10-15T09:30:00Z"
+                    },
+                    {
+                        id: 2,
+                        name: "Chave de Fenda Phillips",
+                        code: "CHAV-012",
+                        category: "Elétrica",
+                        status: "Em Uso",
+                        location: "Oficina",
+                        condition: "Regular",
+                        description: "Chave de fenda ponta Phillips tamanho médio",
+                        observations: "Necessita afiação",
+                        image: "",
+                        createdAt: "2023-10-10T14:20:00Z",
+                        updatedAt: "2023-10-20T11:15:00Z"
+                    },
+                    {
+                        id: 3,
+                        name: "Serra Tico-Tico",
+                        code: "SERR-005",
+                        category: "Mecânica",
+                        status: "Manutenção",
+                        location: "Armazém 2",
+                        condition: "Precisa de Reparo",
+                        description: "Serra tico-tico elétrica 500W",
+                        observations: "Cabo danificado, aguardando reparo",
+                        image: "",
+                        createdAt: "2023-09-28T16:45:00Z",
+                        updatedAt: "2023-10-18T10:30:00Z"
+                    }
+                ];
+            }
+            
+            // ============================================
+            // EVENT LISTENERS
+            // ============================================
+            
+            // Tabs
+            document.querySelectorAll('.tab-button').forEach(button => {
+                button.addEventListener('click', function() {
+                    const tabId = this.getAttribute('data-tab');
+                    
+                    document.querySelectorAll('.tab-button').forEach(btn => btn.classList.remove('active'));
+                    document.querySelectorAll('.tab-content').forEach(content => content.classList.remove('active'));
+                    
+                    this.classList.add('active');
+                    document.getElementById(tabId).classList.add('active');
+                    
+                    if (tabId === 'catalogo') {
+                        loadToolsList();
+                    }
+                    
+                    if (tabId !== 'cadastro') {
+                        isEditing = false;
+                        editingToolId = null;
+                        const saveBtn = document.getElementById('saveToolBtn');
+                        saveBtn.innerHTML = '<i class="fas fa-save"></i> Salvar Ferramenta';
+                    }
+                });
+            });
+            
+            // Configuração do banco de dados
+            document.getElementById('saveConfigBtn').addEventListener('click', function() {
+                dbConfig.url = document.getElementById('supabaseUrl').value.trim();
+                dbConfig.key = document.getElementById('supabaseKey').value.trim();
+                
+                localStorage.setItem('supabaseConfig', JSON.stringify(dbConfig));
+                
+                if (setupSupabaseClient()) {
+                    showNotification('Configuração salva com sucesso!', 'success');
+                    updateHeaderStats();
+                }
+            });
+            
+            document.getElementById('resetConfigBtn').addEventListener('click', function() {
+                if (confirm('Redefinir configuração do Supabase?')) {
+                    localStorage.removeItem('supabaseConfig');
+                    document.getElementById('supabaseUrl').value = '';
+                    document.getElementById('supabaseKey').value = '';
+                    supabaseClient = null;
+                    isOnlineMode = false;
+                    updateHeaderStats();
+                    showNotification('Configuração redefinida!', 'success');
+                }
+            });
+            
+            document.getElementById('testConnectionBtn').addEventListener('click', testSupabaseConnection);
+            document.getElementById('createTableBtn').addEventListener('click', createTableInSupabase);
+            document.getElementById('createBucketBtn').addEventListener('click', createStorageBucket);
+            document.getElementById('syncToOnlineBtn').addEventListener('click', syncToCloud);
+            document.getElementById('syncFromOnlineBtn').addEventListener('click', syncFromCloud);
+            document.getElementById('syncFromOnlineBtn2').addEventListener('click', syncFromCloud);
+            document.getElementById('syncBothBtn').addEventListener('click', async function() {
+                await syncToCloud();
+                await syncFromCloud();
+            });
+            
+            // Botões para limpar cache
+            document.getElementById('clearCacheBtn').addEventListener('click', clearLocalCache);
+            
+            // Otimizar armazenamento
+            document.getElementById('optimizeStorageBtn').addEventListener('click', optimizeStorage);
+            
+            // Backup
+            document.getElementById('backupBtn').addEventListener('click', createBackup);
+            document.getElementById('quickBackupBtn').addEventListener('click', createBackup);
+            
+            // Restaurar backup
+            document.getElementById('restoreBtn').addEventListener('click', function() {
+                document.getElementById('restoreFileInput').click();
+            });
+            
+            document.getElementById('restoreFileInput').addEventListener('change', function(e) {
+                const file = e.target.files[0];
+                if (!file) return;
+                
+                if (!file.name.endsWith('.json')) {
+                    showNotification('Selecione um arquivo JSON válido', 'error');
+                    return;
+                }
+                
+                restoreBackup(file);
+                this.value = '';
+            });
+            
+            // Carregar configurações salvas
+            if (dbConfig.url) {
+                document.getElementById('supabaseUrl').value = dbConfig.url;
+            }
+            if (dbConfig.key) {
+                document.getElementById('supabaseKey').value = dbConfig.key;
+            }
+            
+            // Inicializar cliente Supabase se houver configuração
+            if (dbConfig.url && dbConfig.key) {
+                setupSupabaseClient();
+            }
+            
+            // Botão para capturar imagem
+            document.getElementById('captureImageBtn').addEventListener('click', function() {
+                document.getElementById('imageUploadInput').click();
+            });
+            
+            // Botão para fazer upload de imagem
+            document.getElementById('uploadImageBtn').addEventListener('click', function() {
+                document.getElementById('imageUploadInput').click();
+            });
+            
+            // Botão para limpar imagem
+            document.getElementById('clearImageBtn').addEventListener('click', function() {
+                document.getElementById('cameraPlaceholder').style.display = 'block';
+                document.getElementById('toolImagePreview').style.display = 'none';
+                document.getElementById('toolImagePreview').src = '';
+                currentToolImage = null;
+            });
+            
+            // Input de upload de imagem
+            document.getElementById('imageUploadInput').addEventListener('change', function(e) {
+                const file = e.target.files[0];
+                if (!file) return;
+                
+                // Validar imagem
+                if (!file.type.match('image.*')) {
+                    showNotification('Por favor, selecione uma imagem!', 'error');
+                    return;
+                }
+                
+                if (file.size > 5 * 1024 * 1024) {
+                    showNotification('A imagem é muito grande. Tamanho máximo: 5MB', 'error');
+                    return;
+                }
+                
+                const reader = new FileReader();
+                reader.onload = function(event) {
+                    currentToolImage = event.target.result;
+                    document.getElementById('cameraPlaceholder').style.display = 'none';
+                    document.getElementById('toolImagePreview').style.display = 'block';
+                    document.getElementById('toolImagePreview').src = currentToolImage;
+                };
+                reader.onerror = function() {
+                    showNotification('Erro ao carregar a imagem. Tente novamente.', 'error');
+                };
+                reader.readAsDataURL(file);
+                
+                this.value = '';
+            });
+            
+            // Botão salvar ferramenta
+            document.getElementById('saveToolBtn').addEventListener('click', saveTool);
+            
+            // Botão salvar e novo
+            document.getElementById('saveAndNewBtn').addEventListener('click', async function() {
+                if (await saveTool()) {
+                    clearForm();
+                    if (document.getElementById('catalogo').classList.contains('active')) {
+                        loadToolsList();
+                    }
+                }
+            });
+            
+            // Botão limpar formulário
+            document.getElementById('clearFormBtn').addEventListener('click', clearForm);
+            
+            // Botão gerar QR Code
+            document.getElementById('generateQRCodeBtn').addEventListener('click', function() {
+                showNotification('Selecione uma ferramenta para gerar QR Code', 'info');
+            });
+            
+            // Filtros da lista
+            document.getElementById('filterAllBtn').addEventListener('click', function() {
+                loadToolsList('all');
+            });
+            
+            document.getElementById('filterAvailableBtn').addEventListener('click', function() {
+                loadToolsList('available');
+            });
+            
+            document.getElementById('filterInUseBtn').addEventListener('click', function() {
+                loadToolsList('inuse');
+            });
+            
+            document.getElementById('filterMaintenanceBtn').addEventListener('click', function() {
+                loadToolsList('maintenance');
+            });
+            
+            // Busca
+            document.getElementById('searchTool')?.addEventListener('input', function() {
+                loadToolsList();
+            });
+            
+            // Botões de exportação
+            document.getElementById('exportExcelBtn').addEventListener('click', function() {
+                const range = document.getElementById('exportRange').value;
+                exportToExcel(range);
+            });
+            
+            document.getElementById('exportJSONBtn').addEventListener('click', function() {
+                const range = document.getElementById('exportRange').value;
+                exportToJSON(range);
+            });
+            
+            // Fechar modais
+            document.getElementById('closeModalBtn').addEventListener('click', function() {
+                document.getElementById('toolModal').style.display = 'none';
+            });
+            
+            document.getElementById('closeQRModalBtn').addEventListener('click', function() {
+                document.getElementById('qrModal').style.display = 'none';
+            });
+            
+            // Fechar modal clicando fora
+            document.getElementById('toolModal').addEventListener('click', function(e) {
+                if (e.target === this) {
+                    this.style.display = 'none';
+                }
+            });
+            
+            document.getElementById('qrModal').addEventListener('click', function(e) {
+                if (e.target === this) {
+                    this.style.display = 'none';
+                }
+            });
+            
+            // ============================================
+            // INICIALIZAÇÃO DO SISTEMA
+            // ============================================
+            
+            // Carregar atividades salvas
+            const savedActivities = localStorage.getItem('activities');
+            if (savedActivities) {
+                activities = JSON.parse(savedActivities);
+            }
+            
+            // Salvar atividades periodicamente
+            setInterval(() => {
+                localStorage.setItem('activities', JSON.stringify(activities));
+            }, 30000);
+            
+            // Carregar dados iniciais
+            await loadInitialTools();
+            
+            // Atualizar interface
+            updateHeaderStats();
+            updateStatistics();
+            loadToolsList();
+            updateActivitiesList();
+            
+            // Mostrar mensagem de boas-vindas
+            setTimeout(() => {
+                showNotification('Sistema de Controle de Ferramentas carregado com sucesso!', 'success');
+            }, 500);
+        });
+    </script>
+    <!-- Adicione este código antes do </body> -->
+<footer class="site-footer">
+    <div class="footer-content">
+        <p>Desenvolvido por Fábio Mendes Rodrigues, Planejador da F.W. Company</p>
+        <p class="footer-version">Versão 1.0_rev01 | Última atualização: <span id="currentDate"></span></p>
+    </div>
+</footer>
+
+<style>
+    /* Estilos do rodapé */
+    .site-footer {
+        background-color: var(--primary-color);
+        color: white;
+        padding: 15px 0;
+        margin-top: 30px;
+        border-top: 3px solid var(--secondary-color);
+        text-align: center;
+        font-size: 14px;
+        position: relative;
+        bottom: 0;
+        width: 100%;
+    }
+    
+    .footer-content {
+        max-width: 1400px;
+        margin: 0 auto;
+        padding: 0 20px;
+    }
+    
+    .site-footer p {
+        margin: 5px 0;
+        opacity: 0.9;
+    }
+    
+    .footer-version {
+        font-size: 12px;
+        opacity: 0.7;
+        margin-top: 8px !important;
+    }
+    
+    /* Ajustar container principal para não sobrepor rodapé */
+    .dashboard-container {
+        padding-bottom: 20px;
+    }
+</style>
+
+<script>
+    // Atualizar data automática
+    document.addEventListener('DOMContentLoaded', function() {
+        const currentDateElement = document.getElementById('currentDate');
+        if (currentDateElement) {
+            const now = new Date();
+            currentDateElement.textContent = now.toLocaleDateString('pt-BR');
+        }
+    });
+</script>
+</body>
+</html>
