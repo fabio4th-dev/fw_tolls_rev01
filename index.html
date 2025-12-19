@@ -10,7 +10,7 @@
     <!-- Incluir Supabase JS -->
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <!-- Biblioteca de compressão LZ-String -->
-    <script src="https://cdn.jsdelivr.net/npm/lz-string@1.4.4/libs/lz-string.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/lz-string/1.4.4/lz-string.min.js"></script>
     <style>
         :root {
             --primary-color: #2c3e50;
@@ -2257,62 +2257,64 @@ CREATE TABLE IF NOT EXISTS tools (
                 }
             }
             
-            // Salvar ferramenta no Supabase
-            async function saveToolToSupabase(tool) {
-                try {
-                    // Verificar se já existe uma ferramenta com o mesmo código
-                    const { data: existingTools } = await supabaseClient
-                        .from('tools')
-                        .select('id')
-                        .eq('code', tool.code)
-                        .limit(1);
-                    
-                    if (existingTools && existingTools.length > 0) {
-                        // Atualizar ferramenta existente
-                        const { error } = await supabaseClient
-                            .from('tools')
-                            .update({
-                                name: tool.name,
-                                category: tool.category,
-                                status: tool.status,
-                                location: tool.location,
-                                condition: tool.condition,
-                                description: tool.description,
-                                observations: tool.observations,
-                                image_url: tool.image,
-                                updated_at: new Date().toISOString()
-                            })
-                            .eq('code', tool.code);
-                        
-                        if (error) throw error;
-                        return true;
-                    } else {
-                        // Inserir nova ferramenta
-                        const { data, error } = await supabaseClient
-                            .from('tools')
-                            .insert([{
-                                name: tool.name,
-                                code: tool.code,
-                                category: tool.category,
-                                status: tool.status,
-                                location: tool.location,
-                                condition: tool.condition,
-                                description: tool.description,
-                                observations: tool.observations,
-                                image_url: tool.image,
-                                created_at: tool.createdAt,
-                                updated_at: tool.updatedAt
-                            }]);
-                        
-                        if (error) throw error;
-                        return true;
-                    }
-                } catch (error) {
-                    console.error('Erro ao salvar no Supabase:', error);
-                    showNotification('Erro ao salvar na nuvem. Dados salvos localmente.', 'warning');
-                    return false;
-                }
-            }
+            // Salvar ferramenta no Supabase (VERSÃO CORRIGIDA)
+async function saveToolToSupabase(tool) {
+    try {
+        // Verificar se já existe uma ferramenta com o mesmo código
+        const { data: existingTools, error: checkError } = await supabaseClient
+            .from('tools')
+            .select('id, code')
+            .eq('code', tool.code)
+            .limit(1);
+        
+        if (checkError) {
+            console.error('Erro ao verificar ferramenta existente:', checkError);
+            throw checkError;
+        }
+        
+        const toolData = {
+            name: tool.name,
+            code: tool.code,
+            category: tool.category,
+            status: tool.status,
+            location: tool.location,
+            tool_condition: tool.condition,  // CORREÇÃO AQUI
+            description: tool.description || null,
+            observations: tool.observations || null,
+            image_url: tool.image || null,
+            updated_at: new Date().toISOString()
+        };
+        
+        if (existingTools && existingTools.length > 0) {
+            // Atualizar ferramenta existente
+            const { data, error } = await supabaseClient
+                .from('tools')
+                .update(toolData)
+                .eq('code', tool.code);
+            
+            if (error) throw error;
+            return { success: true, action: 'updated' };
+        } else {
+            // Inserir nova ferramenta
+            toolData.created_at = tool.createdAt || new Date().toISOString();
+            
+            const { data, error } = await supabaseClient
+                .from('tools')
+                .insert([toolData])
+                .select();
+            
+            if (error) throw error;
+            return { success: true, action: 'inserted', data };
+        }
+    } catch (error) {
+        console.error('Erro ao salvar no Supabase:', error);
+        return { 
+            success: false, 
+            error: error.message,
+            suggestion: 'Verifique se a tabela foi criada com a estrutura correta'
+        };
+    }
+}
             
             // Upload de imagem para o Supabase Storage
             async function uploadImageToSupabase(imageDataUrl, toolCode) {
@@ -3145,83 +3147,90 @@ CREATE TABLE tools (
                 }
             }
             
-            // Sincronizar dados locais para a nuvem
-            async function syncToCloud() {
-                if (!supabaseClient) {
-                    showNotification('Configure o banco de dados online primeiro', 'error');
-                    return;
-                }
-                
-                showNotification('Sincronizando dados para a nuvem...', 'warning');
-                addActivity('Sincronização', 'Enviando dados para a nuvem');
-                
-                let successCount = 0;
-                let errorCount = 0;
-                
-                for (const tool of tools) {
-                    try {
-                        // Verificar se a ferramenta já existe na nuvem
-                        const { data: existingTool } = await supabaseClient
-                            .from('tools')
-                            .select('code')
-                            .eq('code', tool.code)
-                            .single();
-                        
-                        if (existingTool) {
-                            // Atualizar existente
-                            const { error } = await supabaseClient
-                                .from('tools')
-                                .update({
-                                    name: tool.name,
-                                    category: tool.category,
-                                    status: tool.status,
-                                    location: tool.location,
-                                    condition: tool.condition,
-                                    description: tool.description,
-                                    observations: tool.observations,
-                                    image_url: tool.image,
-                                    updated_at: tool.updatedAt
-                                })
-                                .eq('code', tool.code);
-                            
-                            if (error) throw error;
-                        } else {
-                            // Inserir nova
-                            const { error } = await supabaseClient
-                                .from('tools')
-                                .insert([{
-                                    name: tool.name,
-                                    code: tool.code,
-                                    category: tool.category,
-                                    status: tool.status,
-                                    location: tool.location,
-                                    condition: tool.condition,
-                                    description: tool.description,
-                                    observations: tool.observations,
-                                    image_url: tool.image,
-                                    created_at: tool.createdAt,
-                                    updated_at: tool.updatedAt
-                                }]);
-                            
-                            if (error) throw error;
-                        }
-                        
-                        successCount++;
-                    } catch (error) {
-                        console.error('Erro ao sincronizar ferramenta:', tool.code, error);
-                        errorCount++;
-                    }
-                }
-                
-                showNotification(`Sincronização concluída: ${successCount} sucessos, ${errorCount} erros`, 
-                    errorCount === 0 ? 'success' : 'warning');
-                    
-                // Adicionar atividade
-                addActivity('Sincronização concluída', `${successCount} ferramentas enviadas, ${errorCount} erros`);
-                    
-                // Atualizar informações do banco
-                updateDatabaseInfo();
+            // ============================================
+            // FUNÇÃO SINCRONIZAR DADOS COM MELHOR TRATAMENTO DE ERROS
+            // ============================================
+            
+            // Sincronizar dados locais para a nuvem (VERSÃO CORRIGIDA)
+async function syncToCloud() {
+    if (!supabaseClient) {
+        showNotification('Configure o banco de dados online primeiro', 'error');
+        return;
+    }
+    
+    showNotification('Sincronizando dados para a nuvem...', 'warning');
+    
+    let successCount = 0;
+    let errorCount = 0;
+    let errorDetails = [];
+    
+    // Primeiro, verificar se a tabela existe
+    try {
+        const { data, error } = await supabaseClient
+            .from('tools')
+            .select('count')
+            .limit(1);
+            
+        if (error && error.message.includes('does not exist')) {
+            showNotification('Tabela não existe. Criando tabela...', 'warning');
+            const created = await createTableInSupabase();
+            if (!created) {
+                showNotification('Não foi possível criar a tabela', 'error');
+                return;
             }
+        }
+    } catch (error) {
+        console.error('Erro ao verificar tabela:', error);
+    }
+    
+    // Sincronizar cada ferramenta
+    for (const tool of tools) {
+        try {
+            const result = await saveToolToSupabase(tool);
+            
+            if (result.success) {
+                successCount++;
+            } else {
+                errorCount++;
+                errorDetails.push({
+                    tool: `${tool.name} (${tool.code})`,
+                    error: result.error
+                });
+            }
+        } catch (error) {
+            errorCount++;
+            errorDetails.push({
+                tool: `${tool.name} (${tool.code})`,
+                error: error.message
+            });
+            console.error('Erro na sincronização:', error);
+        }
+    }
+    
+    // Mostrar resultados
+    if (errorCount === 0) {
+        showNotification(`Sincronização concluída! ${successCount} ferramentas enviadas.`, 'success');
+    } else {
+        showNotification(`Sincronização: ${successCount} sucessos, ${errorCount} erros`, 'warning');
+        
+        // Opcional: Mostrar detalhes dos erros
+        if (errorDetails.length > 0) {
+            console.log('Detalhes dos erros:', errorDetails);
+            setTimeout(() => {
+                if (confirm(`Houve ${errorCount} erro(s). Deseja ver os detalhes?`)) {
+                    let errorMsg = "Erros de sincronização:\n\n";
+                    errorDetails.forEach((err, idx) => {
+                        errorMsg += `${idx + 1}. ${err.tool}\n   → ${err.error}\n\n`;
+                    });
+                    alert(errorMsg);
+                }
+            }, 1000);
+        }
+    }
+    
+    // Atualizar informações do banco
+    updateDatabaseInfo();
+}
             
             // Sincronizar dados da nuvem para local
             async function syncFromCloud() {
@@ -3879,7 +3888,6 @@ CREATE TABLE tools (
             }, 500);
         });
     </script>
-    <!-- Adicione este código antes do </body> -->
 <footer class="site-footer">
     <div class="footer-content">
         <p>Desenvolvido por Fábio Mendes Rodrigues, Planejador da F.W. Company</p>
